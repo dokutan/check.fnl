@@ -42,7 +42,8 @@
                     :pick-args "0.10.0"
                     :global "1.1.0"}
         position (position->string ast)
-        form (?. ast 1 1)
+        form (. ast 1)
+        form (when (= :table (type form)) (. form 1))
         since (. deprecated form)]
     (when (not= nil since)
       (warning position (.. form " is deprecated since " since)))))
@@ -55,7 +56,8 @@
                :macro true
                :fn true}
         position (position->string ast)
-        form (?. ast 1 1)]
+        form (. ast 1)
+        form (when (= :table (type form)) (. form 1))]
     (when (not= nil (. forms form))
       (let [name (?. ast 2 1)]
         (when (string.match (tostring name) "[A-Z_]")
@@ -64,7 +66,8 @@
 (ast-check true [ast]
   "Checks for if expressions that can be replaced with when"
   (let [position (position->string ast)
-        form (?. ast 1 1)]
+        form (. ast 1)
+        form (when (= :table (type form)) (. form 1))]
     (when (and (= :if form) (< (length ast) 5))
       (let [else (. ast 4)
             else (if (= :table (type else)) (. else 1) else)]
@@ -74,22 +77,25 @@
 (ast-check true [ast]
   "Checks if functions and macros have docstrings"
   (let [position (position->string ast)
-        form (?. ast 1 1)]
+        form (. ast 1)
+        form (when (= :table (type form)) (. form 1))]
     (when (or (= :fn form) (= :macro form))
       (when (not= :string (type (?. ast 4)))
-        (warning position (.. form " " (?. ast 2 1) " has no docstring"))))))
+        (warning position (.. form " " (tostring (?. ast 2 1)) " has no docstring"))))))
 
 (ast-check true [ast]
   "Checks for useless do forms"
   (let [position (position->string ast)
-        form (?. ast 1 1)]
+        form (. ast 1)
+        form (when (= :table (type form)) (. form 1))]
     (when (= :do form)
       (when (< (length ast) 3)
         (warning position "this do is useless")))))
 
 (ast-check true [ast]
   "Checks for nested do forms"
-  (let [form (?. ast 1 1)]
+  (let [form (. ast 1)
+        form (when (= :table (type form)) (. form 1))]
     (when (= :do form)
       (each [_ v (pairs ast)]
         (when (= :table (type v))
@@ -102,14 +108,17 @@
 (ast-check true [ast]
   "Checks for invalid let bindings"
   (let [position (position->string ast)
-        form (?. ast 1 1)]
+        form (. ast 1)
+        form (when (= :table (type form)) (. form 1))]
     (when (= :let form)
       (let [bindings (?. ast 2)]
         (if
           (not= :table (type bindings))
           (warning position "let requires a table as the first argument")
           (not= 0 (% (length bindings) 2))
-          (warning position "let requires an even number of bindings"))))))
+          (warning position "let requires an even number of bindings"))
+        (when (< (length ast) 3)
+          (warning position "let requires a body"))))))
 
 (fn perform-ast-checks [ast]
   "Recursively performs checks on the AST"
