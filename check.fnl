@@ -2,6 +2,21 @@
 (local fennel (require :fennel))
 
 ;;; miscellaneous functions
+(local ast-checks [])
+(local string-checks [])
+
+(macro ast-check [enabled? param ?docstring body]
+  "Define an AST based check"
+  `(when ,enabled?
+    (table.insert ast-checks
+      (fn ,param ,?docstring ,body))))
+
+(macro string-check [enabled? param ?docstring body]
+  "Define a string based check"
+  `(when ,enabled?
+    (table.insert string-checks
+      (fn ,param ,?docstring ,body))))
+
 (fn print-table [tab depth]
   "Print table `tab`, intended for debugging"
   (let [depth (if depth depth 0)]
@@ -17,10 +32,10 @@
 
 (fn warning [line number message]
   "Print a warning"
-  (print (.. "\x1b[31m" number ": " message "\x1b[0m\n" line "\n")))
+  (print (.. "\x1b[31m" number ": " message "\x1b[0m\n" line)))
 
 ;;; AST based checks
-(fn check-deprecated [ast]
+(ast-check true [ast]
   "Checks for deprecated forms"
   (let [deprecated {:require-macros "0.4.0"
                     :pick-args "0.10.0"
@@ -31,7 +46,7 @@
     (when (not= nil since)
       (warning (tostring ast) position (.. form " is deprecated since " since)))))
 
-(fn check-names [ast]
+(ast-check true [ast]
   "Checks names for bad symbols"
   (let [forms {:local true
                :var true
@@ -45,43 +60,50 @@
         (when (string.match (tostring name) "[A-Z_]")
           (warning (tostring ast) position "don't use [A-Z_] in names"))))))
 
-(fn ast-checks [ast]
+(ast-check true [ast]
+  "Checks for if expressions that can be replaced with when"
+  (let [position (position->string ast)
+        form (?. ast 1 1)]
+    (when (= :if form)
+      (let [else (?. ast 4 1)]
+        (when (or (= :nil else) (= nil else))
+          (warning (tostring ast) position "this if can be replaced with when"))))))
+
+(fn perform-ast-checks [ast]
   "Recursively performs checks on the AST"
-  (doto ast
-    (check-deprecated)
-    (check-names))
+  (each [_ check (ipairs ast-checks)]
+    (check ast))
   (each [k v (pairs ast)]
     (when (= :table (type v)) ; table?
       (when (not= nil (. (getmetatable v) "__fennelview")) ; nested ast?
-        (ast-checks v)))))
+        (perform-ast-checks v)))))
 
 ;;; string based checks
-(fn check-line-length [line number]
+(string-check true [line number]
   "Checks if the line length exceeds 80 columns"
   (when (> (utf8.len line) 80)
     (warning line number "line length exceeds 80 columns")))
 
-(fn check-comments [line number]
+(string-check true [line number]
   "Checks if comments start with the correct number of semicolons"
   (when (string.match line "^[ \t]*;[^;]+")
     (warning line number "this comment should start with at least two semicolons"))
   (when (string.match line "[^ \t;]+[ \t]*;;")
     (warning line number "this comment should start with one semicolon")))
 
-(fn check-closing [line number]
+(string-check true [line number]
   "Checks if closing delimiters appear on their own line"
   (when (string.match line "^[ \t]*[])}]+")
     (warning line number "closing delimiters should not appear on their own line")))
 
-(fn string-checks [file]
+(fn perform-string-checks [file]
   "Perfoms checks on each line in `file`"
   (let [lines []]
     (each [line (file:lines)]
       (table.insert lines line))
     (each [number line (ipairs lines)]
-      (check-line-length line number)
-      (check-comments line number)
-      (check-closing line number))))
+      (each [_ check (ipairs string-checks)]
+        (check line number)))))
 
 ;;; main
 (each [_ file (ipairs arg)]
@@ -93,8 +115,8 @@
       (let [(ok ast) (parse)]
         (when ok
           (do
-            (ast-checks ast)
+            (perform-ast-checks ast)
             (iterate)))))
     (iterate))
   (let [file (io.open file)]
-    (string-checks file)))
+    (perform-string-checks file)))
