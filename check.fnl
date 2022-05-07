@@ -4,6 +4,7 @@
 ;;; miscellaneous functions
 (local ast-checks [])
 (local string-checks [])
+(var current-lines [])
 
 (macro ast-check [enabled? param ?docstring body]
   "Define an AST based check"
@@ -30,9 +31,9 @@
   "Returns the position of a keyword from the AST as a string"
   (tostring (. pos :line)))
 
-(fn warning [line number message]
+(fn warning [linenumber message]
   "Print a warning"
-  (print (.. "\x1b[31m" number ": " message "\x1b[0m\n" line)))
+  (print (.. "\x1b[31m" linenumber ": " message "\x1b[0m\n" (. current-lines (tonumber linenumber)))))
 
 ;;; AST based checks
 (ast-check true [ast]
@@ -44,7 +45,7 @@
         form (?. ast 1 1)
         since (. deprecated form)]
     (when (not= nil since)
-      (warning (tostring ast) position (.. form " is deprecated since " since)))))
+      (warning position (.. form " is deprecated since " since)))))
 
 (ast-check true [ast]
   "Checks names for bad symbols"
@@ -58,7 +59,7 @@
     (when (not= nil (. forms form))
       (let [name (?. ast 2 1)]
         (when (string.match (tostring name) "[A-Z_]")
-          (warning (tostring ast) position "don't use [A-Z_] in names"))))))
+          (warning position "don't use [A-Z_] in names"))))))
 
 (ast-check true [ast]
   "Checks for if expressions that can be replaced with when"
@@ -67,7 +68,7 @@
     (when (= :if form)
       (let [else (?. ast 4 1)]
         (when (or (= :nil else) (= nil else))
-          (warning (tostring ast) position "this if can be replaced with when"))))))
+          (warning position "this if can be replaced with when"))))))
 
 (fn perform-ast-checks [ast]
   "Recursively performs checks on the AST"
@@ -82,32 +83,37 @@
 (string-check true [line number]
   "Checks if the line length exceeds 80 columns"
   (when (> (utf8.len line) 80)
-    (warning line number "line length exceeds 80 columns")))
+    (warning number "line length exceeds 80 columns")))
 
 (string-check true [line number]
   "Checks if comments start with the correct number of semicolons"
   (when (string.match line "^[ \t]*;[^;]+")
-    (warning line number "this comment should start with at least two semicolons"))
+    (warning number "this comment should start with at least two semicolons"))
   (when (string.match line "[^ \t;]+[ \t]*;;")
-    (warning line number "this comment should start with one semicolon")))
+    (warning number "this comment should start with one semicolon")))
 
 (string-check true [line number]
   "Checks if closing delimiters appear on their own line"
   (when (string.match line "^[ \t]*[])}]+")
-    (warning line number "closing delimiters should not appear on their own line")))
+    (warning number "closing delimiters should not appear on their own line")))
 
-(fn perform-string-checks [file]
+(fn perform-string-checks []
   "Perfoms checks on each line in `file`"
-  (let [lines []]
-    (each [line (file:lines)]
-      (table.insert lines line))
-    (each [number line (ipairs lines)]
-      (each [_ check (ipairs string-checks)]
-        (check line number)))))
+  (each [number line (ipairs current-lines)]
+    (each [_ check (ipairs string-checks)]
+      (check line number))))
 
 ;;; main
 (each [_ file (ipairs arg)]
   (print (.. "\x1b[32m" file "\x1b[0m"))
+  ;; read all lines from file
+  (set current-lines [])
+  (let [file (io.open file)]
+    (each [line (file:lines)]
+      (table.insert current-lines line)))
+  ;; perform string based checks
+  (perform-string-checks)
+  ;; perform AST based checks
   (let [file (io.open file)
         str (file:read "*a")
         parse (fennel.parser str)]
@@ -118,5 +124,4 @@
             (perform-ast-checks ast)
             (iterate)))))
     (iterate))
-  (let [file (io.open file)]
-    (perform-string-checks file)))
+  (print))
