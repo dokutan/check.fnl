@@ -65,16 +65,57 @@
   "Checks for if expressions that can be replaced with when"
   (let [position (position->string ast)
         form (?. ast 1 1)]
-    (when (= :if form)
-      (let [else (?. ast 4 1)]
+    (when (and (= :if form) (< (length ast) 5))
+      (let [else (. ast 4)
+            else (if (= :table (type else)) (. else 1) else)]
         (when (or (= :nil else) (= nil else))
           (warning position "this if can be replaced with when"))))))
+
+(ast-check true [ast]
+  "Checks if functions and macros have docstrings"
+  (let [position (position->string ast)
+        form (?. ast 1 1)]
+    (when (or (= :fn form) (= :macro form))
+      (when (not= :string (type (?. ast 4)))
+        (warning position (.. form " " (?. ast 2 1) " has no docstring"))))))
+
+(ast-check true [ast]
+  "Checks for useless do forms"
+  (let [position (position->string ast)
+        form (?. ast 1 1)]
+    (when (= :do form)
+      (when (< (length ast) 3)
+        (warning position "this do is useless")))))
+
+(ast-check true [ast]
+  "Checks for nested do forms"
+  (let [form (?. ast 1 1)]
+    (when (= :do form)
+      (each [_ v (pairs ast)]
+        (when (= :table (type v))
+          (when (not= nil (. (getmetatable v) "__fennelview"))
+            (let [form (?. v 1 1)
+                  position (position->string v)]
+              (when (= :do form)
+                (warning position "this nested do is useless")))))))))
+
+(ast-check true [ast]
+  "Checks for invalid let bindings"
+  (let [position (position->string ast)
+        form (?. ast 1 1)]
+    (when (= :let form)
+      (let [bindings (?. ast 2)]
+        (if
+          (not= :table (type bindings))
+          (warning position "let requires a table as the first argument")
+          (not= 0 (% (length bindings) 2))
+          (warning position "let requires an even number of bindings"))))))
 
 (fn perform-ast-checks [ast]
   "Recursively performs checks on the AST"
   (each [_ check (ipairs ast-checks)]
     (check ast))
-  (each [k v (pairs ast)]
+  (each [_ v (pairs ast)]
     (when (= :table (type v)) ; table?
       (when (not= nil (. (getmetatable v) "__fennelview")) ; nested ast?
         (perform-ast-checks v)))))

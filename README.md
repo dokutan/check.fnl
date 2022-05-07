@@ -19,10 +19,14 @@ chmod +x check.fnl
 Currently check.fnl finds:
 - deprecated forms
 - bad style
-  - bad characters in names
+  - wrong characters in names
   - lines that exceed 80 columns
   - wrong number of semicolons in comments
   - closing delimiters on their own line
+  - missing docstrings
+- useless ``do`` forms
+- ``if`` replacable with ``when``
+- invalid ``let`` bindings
 
 ## References
 - The Fennel reference: https://fennel-lang.org/reference
