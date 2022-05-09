@@ -18,6 +18,20 @@
     (table.insert string-checks
       (fn ,param ,?docstring ,body))))
 
+(fn ??. [t k ...]
+  "Type-safe table lookup, returns nil if `t` is not a table"
+  (if (not= 0 (length [...]))
+    (if (= :table (type t))
+      (??. (. t k) (table.unpack [...]))
+      nil)
+    (if (= :table (type t))
+      (. t k)
+      nil)))
+
+(fn sym= [sym name]
+  "Is `sym` a Fennel symbol having `name` ?"
+  (and (fennel.sym? sym) (= name (??. sym 1))))
+
 (fn print-table [tab depth]
   "Print table `tab`, intended for debugging"
   (let [depth (if depth depth 0)]
@@ -33,7 +47,7 @@
 
 (fn warning [linenumber message]
   "Print a warning"
-  (print (.. "\x1b[31m" linenumber ": " message "\x1b[0m\n" (. current-lines (tonumber linenumber)))))
+  (print (.. "\x1b[33m" linenumber ": " message "\x1b[0m\n" (. current-lines (tonumber linenumber)))))
 
 ;;; AST based checks
 (ast-check true [ast]
@@ -100,9 +114,9 @@
       (each [_ v (pairs ast)]
         (when (= :table (type v))
           (when (not= nil (. (getmetatable v) "__fennelview"))
-            (let [form (?. v 1 1)
+            (let [form (?. v 1)
                   position (position->string v)]
-              (when (= :do form)
+              (when (sym= form :do)
                 (warning position "this nested do is useless")))))))))
 
 (ast-check true [ast]
@@ -119,6 +133,15 @@
           (warning position "let requires an even number of bindings"))
         (when (< (length ast) 3)
           (warning position "let requires a body"))))))
+
+(ast-check true [ast]
+  "Checks for (not (= …))"
+  (let [position (position->string ast)
+        form (??. ast 1)]
+    (when (sym= form :not)
+      (let [form (??. ast 2 1)]
+        (when (sym= form :=)
+          (warning position "replace (not (= ...)) with (not= ...)"))))))
 
 (fn perform-ast-checks [ast]
   "Recursively performs checks on the AST"
@@ -155,7 +178,7 @@
 
 ;;; main
 (each [_ file (ipairs arg)]
-  (print (.. "\x1b[32m" file "\x1b[0m"))
+  (print (.. "\x1b[34m" file "\x1b[0m"))
   ;; read all lines from file
   (set current-lines [])
   (let [file (io.open file)]

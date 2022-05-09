@@ -27,6 +27,7 @@ Currently check.fnl finds:
 - useless ``do`` forms
 - ``if`` replacable with ``when``
 - invalid ``let`` bindings
+- ``(not (= ...))`` replacable with ``(not= ...)``
 
 ## References
 - The Fennel reference: https://fennel-lang.org/reference
