@@ -28,6 +28,7 @@ Currently check.fnl finds:
 - ``if`` replacable with ``when``
 - invalid ``let`` bindings
 - ``(not (= ...))`` replacable with ``(not= ...)``
+- lists that don't begin with an identifier
 
 ## References
 - The Fennel reference: https://fennel-lang.org/reference
