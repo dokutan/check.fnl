@@ -21,12 +21,10 @@
 (fn ??. [t k ...]
   "Type-safe table lookup, returns nil if `t` is not a table"
   (if (not= 0 (length [...]))
-    (if (= :table (type t))
-      (??. (. t k) (table.unpack [...]))
-      nil)
-    (if (= :table (type t))
-      (. t k)
-      nil)))
+    (when (= :table (type t))
+      (??. (. t k) (table.unpack [...])))
+    (when (= :table (type t))
+      (. t k))))
 
 (fn sym= [sym name]
   "Is `sym` a Fennel symbol having `name` ?"
@@ -80,8 +78,8 @@
   (let [position (position->string ast)
         form (. ast 1)]
     (when (and (sym= form :if) (< (length ast) 5))
-      (let [else (??. ast 4 1)]
-        (when (or (= :nil else) (= nil else))
+      (let [else (??. ast 4)]
+        (when (or (sym= else :nil) (= nil else))
           (warning position "this if can be replaced with when"))))))
 
 (ast-check true [ast]
@@ -145,9 +143,10 @@
   "Recursively performs checks on the AST"
   (each [_ check (ipairs ast-checks)]
     (check ast))
-  (each [_ v (pairs ast)]
-    (when (fennel.list? v) ; nested ast?
-      (perform-ast-checks v))))
+  (when (fennel.list? ast)
+    (each [_ v (pairs ast)]
+      (when (fennel.list? v) ; nested ast?
+        (perform-ast-checks v)))))
 
 ;;; string based checks
 (string-check true [line number]
