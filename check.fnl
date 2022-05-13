@@ -5,6 +5,7 @@
 (local ast-checks [])
 (local string-checks [])
 (var current-lines [])
+(var return-value 0)
 
 (macro ast-check [enabled? param ?docstring body]
   "Define an AST based check"
@@ -43,9 +44,16 @@
   "Returns the position of a keyword from the AST as a string"
   (tostring (. pos :line)))
 
-(fn warning [linenumber message]
+(fn check-warning [linenumber message]
   "Print a warning"
+  (when (= return-value 0) (set return-value 1))
   (print (.. "\x1b[33m" linenumber ": " message "\x1b[0m\n" (. current-lines (tonumber linenumber)))))
+
+(fn check-error [linenumber message]
+  "Print an error"
+  (set return-value 2)
+  (print (.. "\x1b[31m" linenumber ": " message "\x1b[0m\n" (. current-lines (tonumber linenumber)))))
+
 
 ;;; AST based checks
 (ast-check true [ast]
@@ -57,7 +65,7 @@
         form (??. ast 1 1)
         since (. deprecated form)]
     (when (and (fennel.sym? (. ast 1)) (not= nil since))
-      (warning position (.. form " is deprecated since " since)))))
+      (check-warning position (.. form " is deprecated since " since)))))
 
 (ast-check true [ast]
   "Checks names for bad symbols"
@@ -65,13 +73,15 @@
                :var true
                :global true
                :macro true
-               :fn true}
+               :fn true
+               :lambda true
+               :λ true}
         position (position->string ast)
         form (??. ast 1 1)]
     (when (and (fennel.sym? (. ast 1)) (not= nil (. forms form)))
       (let [name (?. ast 2 1)]
-        (when (string.match (tostring name) "[A-Z_]")
-          (warning position "don't use [A-Z_] in names"))))))
+        (when (and (= :string (type name)) (string.match (tostring name) "[A-Z_]"))
+          (check-warning position "don't use [A-Z_] in names"))))))
 
 (ast-check true [ast]
   "Checks for if expressions that can be replaced with when"
@@ -80,15 +90,18 @@
     (when (and (sym= form :if) (< (length ast) 5))
       (let [else (??. ast 4)]
         (when (or (sym= else :nil) (= nil else))
-          (warning position "this if can be replaced with when"))))))
+          (check-warning position "this if can be replaced with when"))))))
 
 (ast-check true [ast]
   "Checks if functions and macros have docstrings"
   (let [position (position->string ast)
         form (. ast 1)]
-    (when (or (sym= form :fn) (sym= form :macro))
-      (when (not= :string (type (?. ast 4)))
-        (warning position (.. (. form 1) " " (tostring (?. ast 2 1)) " has no docstring"))))))
+    (when (or (sym= form :fn) (sym= form :macro) (sym= form :lambda) (sym= form :λ))
+      (if (fennel.sequence? (?. ast 2))
+        (when (or (<= (length ast) 3) (not= :string (type (?. ast 3))))
+          (check-warning position (.. "anonymous " (. form 1) " has no docstring")))
+        (when (or (<= (length ast) 4) (not= :string (type (?. ast 4))))
+          (check-warning position (.. (. form 1) " " (tostring (?. ast 2 1)) " has no docstring")))))))
 
 (ast-check true [ast]
   "Checks for useless do forms"
@@ -96,7 +109,7 @@
         form (. ast 1)]
     (when (sym= form :do)
       (when (< (length ast) 3)
-        (warning position "this do is useless")))))
+        (check-warning position "this do is useless")))))
 
 (ast-check true [ast]
   "Checks for nested do forms"
@@ -107,7 +120,7 @@
           (let [form (. v 1)
                 position (position->string v)]
             (when (sym= form :do)
-              (warning position "this nested do is useless"))))))))
+              (check-warning position "this nested do is useless"))))))))
 
 (ast-check true [ast]
   "Checks for invalid let bindings"
@@ -117,54 +130,84 @@
       (let [bindings (??. ast 2)]
         (if
           (or (not (fennel.sequence? bindings)) (fennel.sym? bindings))
-          (warning position "let requires a table as the first argument")
+          (check-error position "let requires a table as the first argument")
           (not= 0 (% (length bindings) 2))
-          (warning position "let requires an even number of bindings"))
+          (check-error position "let requires an even number of bindings"))
         (when (< (length ast) 3)
-          (warning position "let requires a body"))))))
+          (check-error position "let requires a body"))))))
 
 (ast-check true [ast]
-  "Checks for (not (= …))"
+  "Checks for invalid uses of when"
+  (let [position (position->string ast)
+        form (. ast 1)]
+    (when (sym= form :when)
+      (when (< (length ast) 3)
+        (check-error position "when requires a body")))))
+
+(ast-check true [ast]
+  "Checks for uses of not that can be replaced"
   (let [position (position->string ast)
         form (. ast 1)]
     (when (sym= form :not)
       (let [form (??. ast 2 1)]
-        (when (sym= form :=)
-          (warning position "replace (not (= ...)) with (not= ...)"))))))
+        (if
+          (sym= form :not)
+          (check-warning position "(not (not ...)) is useless")
+          (sym= form :not=)
+          (check-warning position "replace (not (not= ...)) with (= ...)")
+          (sym= form "~=")
+          (check-warning position "replace (not (~= ...)) with (= ...)")
+          (sym= form :=)
+          (check-warning position "replace (not (= ...)) with (not= ...)")
+          (sym= form :<)
+          (check-warning position "replace (not (< ...)) with (>= ...)")
+          (sym= form :<=)
+          (check-warning position "replace (not (<= ...)) with (> ...)")
+          (sym= form :>)
+          (check-warning position "replace (not (> ...)) with (<= ...)")
+          (sym= form :>=)
+          (check-warning position "replace (not (>= ...)) with (< ...)"))))))
 
 (ast-check true [ast]
   "Checks for lists that don't begin with an identifier"
   (let [position (position->string ast)
         form (??. ast 1)]
     (when (and (fennel.list? ast) (not (fennel.sym? form)))
-      (warning position "this list doesn't begin with an identifier"))))
+      (check-warning position "this list doesn't begin with an identifier"))))
 
-(fn perform-ast-checks [ast]
+(ast-check true [ast root?]
+  "Checks for locals that can be replaced with let"
+  (let [position (position->string ast)
+        form (??. ast 1)]
+    (when (and (not root?) (sym= form :local))
+      (check-warning position "this local can be replaced with let"))))
+
+(fn perform-ast-checks [ast root?]
   "Recursively performs checks on the AST"
   (each [_ check (ipairs ast-checks)]
-    (check ast))
+    (check ast root?))
   (when (fennel.list? ast)
     (each [_ v (pairs ast)]
       (when (fennel.list? v) ; nested ast?
-        (perform-ast-checks v)))))
+        (perform-ast-checks v false)))))
 
 ;;; string based checks
 (string-check true [line number]
   "Checks if the line length exceeds 80 columns"
   (when (> (utf8.len line) 80)
-    (warning number "line length exceeds 80 columns")))
+    (check-warning number "line length exceeds 80 columns")))
 
 (string-check true [line number]
   "Checks if comments start with the correct number of semicolons"
   (when (string.match line "^[ \t]*;[^;]+")
-    (warning number "this comment should start with at least two semicolons"))
+    (check-warning number "this comment should start with at least two semicolons"))
   (when (string.match line "[^ \t;]+[ \t]*;;")
-    (warning number "this comment should start with one semicolon")))
+    (check-warning number "this comment should start with one semicolon")))
 
 (string-check true [line number]
   "Checks if closing delimiters appear on their own line"
   (when (string.match line "^[ \t]*[])}]+")
-    (warning number "closing delimiters should not appear on their own line")))
+    (check-warning number "closing delimiters should not appear on their own line")))
 
 (fn perform-string-checks []
   "Perfoms checks on each line in `file`"
@@ -190,7 +233,8 @@
       (let [(ok ast) (parse)]
         (when ok
           (do
-            (perform-ast-checks ast)
+            (perform-ast-checks ast true)
             (iterate)))))
     (iterate))
   (print))
+(os.exit return-value)

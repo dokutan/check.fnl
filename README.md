@@ -26,9 +26,12 @@ Currently check.fnl finds:
   - missing docstrings
 - useless ``do`` forms
 - ``if`` replacable with ``when``
-- invalid ``let`` bindings
-- ``(not (= ...))`` replacable with ``(not= ...)``
+- uses of ``not`` that can be replaced
 - lists that don't begin with an identifier
+- uses of ``local`` that can be replaced with ``let``
+- syntax errors
+  - ``let``
+  - ``when``
 
 ## References
 - The Fennel reference: https://fennel-lang.org/reference
