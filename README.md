@@ -32,6 +32,7 @@ Currently check.fnl finds:
 - syntax errors
   - ``let``
   - ``when``
+  - ``if``
 
 ## References
 - The Fennel reference: https://fennel-lang.org/reference

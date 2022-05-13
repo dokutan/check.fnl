@@ -145,6 +145,14 @@
         (check-error position "when requires a body")))))
 
 (ast-check true [ast]
+  "Checks for invalid uses of if"
+  (let [position (position->string ast)
+        form (. ast 1)]
+    (when (sym= form :if)
+      (when (< (length ast) 3)
+        (check-error position "if requires a condition and a body")))))
+
+(ast-check true [ast]
   "Checks for uses of not that can be replaced"
   (let [position (position->string ast)
         form (. ast 1)]
