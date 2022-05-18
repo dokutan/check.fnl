@@ -90,7 +90,7 @@
     (when (and (sym= form :if) (< (length ast) 5))
       (let [else (??. ast 4)]
         (when (or (sym= else :nil) (= nil else))
-          (check-warning position "this if can be replaced with when"))))))
+          (check-warning position "if the body causes side-effects, replace this if with when"))))))
 
 (ast-check true [ast]
   "Checks if functions and macros have docstrings"
