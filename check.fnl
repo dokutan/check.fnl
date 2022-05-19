@@ -31,11 +31,9 @@
 (local config
   (if (not= nil config-path)
     (fennel.dofile config-path)
-    {
-      :color true
-      :max-line-length nil
-      :checks {}
-    }))
+    {:color true
+     :max-line-length nil
+     :checks {}}))
 (when (= nil config.checks) (tset config :checks {}))
 
 ;; ansi escape codes to colorize the output
@@ -46,23 +44,21 @@
 
 (macro ast-check [code enabled? param docstring body]
   "Define an AST based check"
-  `(do
-    (let [default?# ,enabled?
+  `(let [default?# ,enabled?
           enabled?# (if (not= nil (. config.checks ,code)) (. config.checks ,code) default?#)]
-      (tset check-metadata ,code {:docstring ,docstring :default? default?# :enabled? enabled?#})
-      (when enabled?#
-        (table.insert ast-checks
-          (fn ,param "" ,body))))))
+    (tset check-metadata ,code {:docstring ,docstring :default? default?# :enabled? enabled?#})
+    (when enabled?#
+      (table.insert ast-checks
+        (fn ,param "" ,body)))))
 
 (macro string-check [code enabled? param docstring body]
   "Define a string based check"
-  `(do
-    (let [default?# ,enabled?
-          enabled?# (if (not= nil (. config.checks ,code)) (. config.checks ,code) default?#)]
-      (tset check-metadata ,code {:docstring ,docstring :default? default?# :enabled? enabled?#})
-      (when enabled?#
-        (table.insert string-checks
-          (fn ,param "" ,body))))))
+  `(let [default?# ,enabled?
+        enabled?# (if (not= nil (. config.checks ,code)) (. config.checks ,code) default?#)]
+    (tset check-metadata ,code {:docstring ,docstring :default? default?# :enabled? enabled?#})
+    (when enabled?#
+      (table.insert string-checks
+        (fn ,param "" ,body)))))
 
 (fn ??. [t k ...]
   "Type-safe table lookup, returns nil if `t` is not a table"
@@ -148,7 +144,7 @@
         (when (or (<= (length ast) 4) (not= :string (type (?. ast 4))))
           (check-warning position (.. (. form 1) " " (tostring (?. ast 2 1)) " has no docstring")))))))
 
-(ast-check :useless-do true [ast]
+(ast-check :useless-do false [ast]
   "Checks for useless do forms"
   (let [position (position->string ast)
         form (. ast 1)]
@@ -234,6 +230,40 @@
         form (??. ast 1)]
     (when (and (not root?) (sym= form :local))
       (check-warning position "this local can be replaced with let"))))
+
+(ast-check :syntax-relational true [ast]
+  "Checks for relational operators that are missing an operand"
+  (let [forms {:= true "~=" true :not= true :< true :<= true :> true :>= true}
+        position (position->string ast)
+        form (??. ast 1 1)]
+    (when (and
+            (fennel.sym? (. ast 1))
+            (not= nil (. forms form))
+            (< (length ast) 3))
+      (check-error position (.. form " requires at least two arguments")))))
+
+(ast-check :useless-forms true [ast]
+  "Checks for forms that are useless with one argument"
+  (let [forms {:+ true :% true :* true :. true :.. true :// true :?. true
+               :^ true :or true :and true :math.min true :math.max true
+               :do true :doto true :-> true :->> true :-?> true :-?>> true}
+        position (position->string ast)
+        form (??. ast 1 1)]
+    (when (and
+            (fennel.sym? (. ast 1))
+            (not= nil (. forms form))
+            (< (length ast) 3))
+      (check-warning position (.. form " is useless with a single argument")))))
+
+(ast-check :style-alternatives true [ast]
+  "Checks for forms that have multiple names"
+  (let [position (position->string ast)
+        form (. ast 1)]
+    (if
+      (sym= form :#)
+      (check-warning position "# can be replaced with length")
+      (sym= form "~=")
+      (check-warning position "~= can be replaced with not="))))
 
 (fn perform-ast-checks [ast root?]
   "Recursively performs checks on the AST"

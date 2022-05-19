@@ -15,7 +15,7 @@ chmod +x check.fnl
 ./check.fnl file1.fnl file2.fnl …
 ```
 
-A [configuration file](configuration.md) can be specified with the ``-c`` option.
+A [configuration file](configuration.md) can be specified with the ``-c`` option. This allows you to change the enabled checks, as well as their behaviour.
 ```
 ./check.fnl -c config.fnl file1.fnl file2.fnl …
 ```
@@ -31,7 +31,7 @@ Currently check.fnl finds:
   - wrong number of semicolons in comments
   - closing delimiters on their own line
   - missing docstrings
-- useless ``do`` forms
+- useless forms
 - ``if`` replacable with ``when``
 - uses of ``not`` that can be replaced
 - lists that don't begin with an identifier
@@ -40,6 +40,9 @@ Currently check.fnl finds:
   - ``let``
   - ``when``
   - ``if``
+  - …
+
+Not all checks are enabled by default, and some are likely to produce false positives.
 
 ## References
 - The Fennel reference: https://fennel-lang.org/reference
