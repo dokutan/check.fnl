@@ -15,6 +15,13 @@ chmod +x check.fnl
 ./check.fnl file1.fnl file2.fnl …
 ```
 
+A [configuration file](configuration.md) can be specified with the ``-c`` option.
+```
+./check.fnl -c config.fnl file1.fnl file2.fnl …
+```
+
+Use the ``-s`` option to show a list of all checks.
+
 ## Features
 Currently check.fnl finds:
 - deprecated forms
