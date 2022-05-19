@@ -6,6 +6,35 @@
 (local string-checks [])
 (var current-lines [])
 (var return-value 0)
+(var config-path nil)
+(local files [])
+
+((fn parse-arg [arg]
+  "Parse commandline arguments"
+  (match (. arg 1)
+    "-h" (do
+           (print "usage: check.fnl [-c config] file ...")
+           (os.exit 0))
+    "-c" (do
+           (set config-path (. arg 2))
+           (table.remove arg 1)
+           (table.remove arg 1)))
+  (if (not= nil (. arg 1))
+    (do
+      (table.insert files (. arg 1))
+      (table.remove arg 1)
+      (parse-arg arg))))
+  arg)
+
+(local config
+  (if (not= nil config-path)
+    (fennel.dofile config-path)
+    {}))
+
+(local color
+  (if (= false (. config :color))
+    {:red "" :yellow "" :blue "" :default ""}
+    {:red "\x1b[31m" :yellow "\x1b[33m" :blue "\x1b[34m" :default "\x1b[0m"}))
 
 (macro ast-check [enabled? param ?docstring body]
   "Define an AST based check"
@@ -47,12 +76,12 @@
 (fn check-warning [linenumber message]
   "Print a warning"
   (when (= return-value 0) (set return-value 1))
-  (print (.. "\x1b[33m" linenumber ": " message "\x1b[0m\n" (. current-lines (tonumber linenumber)))))
+  (print (.. color.yellow linenumber ": " message color.default "\n" (. current-lines (tonumber linenumber)))))
 
 (fn check-error [linenumber message]
   "Print an error"
   (set return-value 2)
-  (print (.. "\x1b[31m" linenumber ": " message "\x1b[0m\n" (. current-lines (tonumber linenumber)))))
+  (print (.. color.red linenumber ": " message color.default "\n" (. current-lines (tonumber linenumber)))))
 
 
 ;;; AST based checks
@@ -224,8 +253,8 @@
       (check line number))))
 
 ;;; main
-(each [_ file (ipairs arg)]
-  (print (.. "\x1b[34m" file "\x1b[0m"))
+(each [_ file (ipairs files)]
+  (print (.. color.blue file color.default))
   ;; read all lines from file
   (set current-lines [])
   (let [file (io.open file)]
