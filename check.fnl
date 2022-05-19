@@ -33,12 +33,14 @@
     (fennel.dofile config-path)
     {
       :color true
-      :max-line-length 80
+      :max-line-length nil
       :checks {}
     }))
+(when (= nil config.checks) (tset config :checks {}))
 
+;; ansi escape codes to colorize the output
 (local color
-  (if config.color
+  (if (not= false config.color)
     {:red "\x1b[31m" :yellow "\x1b[33m" :blue "\x1b[34m" :default "\x1b[0m"}
     {:red "" :yellow "" :blue "" :default ""}))
 
@@ -245,8 +247,9 @@
 ;;; string based checks
 (string-check :style-length true [line number]
   "Checks if the line is to long"
-  (when (> (utf8.len line) config.max-line-length)
-    (check-warning number (.. "line length exceeds " config.max-line-length " columns"))))
+  (let [max-line-length (or config.max-line-length 80)]
+    (when (> (utf8.len line) max-line-length)
+      (check-warning number (.. "line length exceeds " max-line-length " columns")))))
 
 (string-check :style-comments true [line number]
   "Checks if comments start with the correct number of semicolons"
