@@ -144,24 +144,21 @@
         (when (or (<= (length ast) 4) (not= :string (type (?. ast 4))))
           (check-warning position (.. (. form 1) " " (tostring (?. ast 2 1)) " has no docstring")))))))
 
-(ast-check :useless-do false [ast]
+(ast-check :useless-do true [ast]
   "Checks for useless do forms"
-  (let [position (position->string ast)
-        form (. ast 1)]
-    (when (sym= form :do)
-      (when (< (length ast) 3)
-        (check-warning position "this do is useless")))))
-
-(ast-check :nested-do true [ast]
-  "Checks for nested do forms"
-  (let [form (. ast 1)]
-    (when (sym= form :do)
+  (let [forms {:let true
+               :fn true
+               :lambda true
+               :λ true
+               :do true}
+        form (??. ast 1 1)]
+    (when (. forms form)
       (each [_ v (pairs ast)]
         (when (fennel.list? v)
-          (let [form (. v 1)
+          (let [form2 (. v 1)
                 position (position->string v)]
-            (when (sym= form :do)
-              (check-warning position "this nested do is useless"))))))))
+            (when (sym= form2 :do)
+              (check-warning position (.. "do is useless inside of " form)))))))))
 
 (ast-check :syntax-let true [ast]
   "Checks for invalid let bindings"
@@ -267,11 +264,12 @@
 
 (fn perform-ast-checks [ast root?]
   "Recursively performs checks on the AST"
-  (each [_ check (ipairs ast-checks)]
-    (check ast root?))
   (when (fennel.list? ast)
+    (each [_ check (ipairs ast-checks)]
+      (check ast root?)))
+  (when (= :table (type ast))
     (each [_ v (pairs ast)]
-      (when (fennel.list? v) ; nested ast?
+      (when (= :table (type v)) ; nested ast or table?
         (perform-ast-checks v false)))))
 
 ;;; string based checks
