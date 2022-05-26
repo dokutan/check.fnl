@@ -1,0 +1,6 @@
+(local _ :good)
+(local _a :good)
+(local a_ :bad)
+(local a_b :bad)
+(local _a_b :bad)
+(local A :bad)

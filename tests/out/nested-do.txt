@@ -1,0 +1,4 @@
+./in/nested-do.fnl
+2: do is useless inside of do
+  (do
+

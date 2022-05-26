@@ -1,0 +1,4 @@
+./in/useless-do.fnl
+2: do is useless inside of fn
+  (do
+

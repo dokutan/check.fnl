@@ -1,0 +1,6 @@
+./in/if-when.fnl
+1: if the body causes side-effects, replace this if with when
+(if true
+3: if the body causes side-effects, replace this if with when
+(if true
+

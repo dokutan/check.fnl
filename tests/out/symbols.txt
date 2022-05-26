@@ -1,0 +1,8 @@
+./in/symbols.fnl
+3: don't use [A-Z_] in names
+(local a_ :bad)
+4: don't use [A-Z_] in names
+(local a_b :bad)
+5: don't use [A-Z_] in names
+(local _a_b :bad)
+

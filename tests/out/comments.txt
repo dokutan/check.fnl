@@ -1,0 +1,6 @@
+./in/comments.fnl
+1: this comment should start with at least two semicolons
+; comment 1
+2: this comment should start with one semicolon
+(print "some code") ;; comment 2
+

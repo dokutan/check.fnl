@@ -1,0 +1,14 @@
+./in/syntax-relational.fnl
+1: = requires at least two arguments
+(= 1)
+2: < requires at least two arguments
+(< 2)
+3: <= requires at least two arguments
+(<= 3)
+4: > requires at least two arguments
+(> 4)
+5: >= requires at least two arguments
+(>= 5)
+6: not= requires at least two arguments
+(not= 6)
+

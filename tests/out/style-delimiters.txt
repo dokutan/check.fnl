@@ -1,0 +1,4 @@
+./in/style-delimiters.fnl
+4: closing delimiters should not appear on their own line
+})
+

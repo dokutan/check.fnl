@@ -1,0 +1,4 @@
+./in/docstring.fnl
+2: fn b has no docstring
+(fn b [] (print "b"))
+

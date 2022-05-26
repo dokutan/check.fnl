@@ -1,0 +1,4 @@
+./in/style-length.fnl
+2: line length exceeds 80 columns
+(print "this is a very long                                                   line")
+

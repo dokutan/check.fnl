@@ -1,0 +1,6 @@
+./in/syntax-when.fnl
+1: when requires a body
+(when true)
+2: when requires a body
+(when (print 1))
+
