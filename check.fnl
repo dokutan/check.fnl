@@ -283,10 +283,11 @@
 
 (string-check :style-comments true [line number]
   "Checks if comments start with the correct number of semicolons"
-  (when (string.match line "^[ \t]*;[^;]+")
-    (check-warning number "this comment should start with at least two semicolons"))
-  (when (string.match line "[^ \t;]+[ \t]*;;")
-    (check-warning number "this comment should start with one semicolon")))
+  (do
+    (when (string.match line "^[ \t]*;[^;]+")
+      (check-warning number "this comment should start with at least two semicolons"))
+    (when (string.match line "[^ \t;]+[ \t]*;;")
+      (check-warning number "this comment should start with one semicolon"))))
 
 (string-check :style-delimiters true [line number]
   "Checks if closing delimiters appear on their own line"
@@ -304,7 +305,7 @@
   (each [code metadata (pairs check-metadata)]
     (let [pad1 (string.rep " " (- 20 (length code)))
           enabled? (.. (if metadata.enabled? "true" "false") "(" (if metadata.default? "true" "false") ")")
-          pad2 (string.rep " " (- 12 (length enabled?))) ]
+          pad2 (string.rep " " (- 13 (length enabled?))) ]
       (print (.. code pad1 enabled? pad2 (or metadata.docstring "")))))
   (os.exit 0))
 
