@@ -121,7 +121,9 @@
         form (??. ast 1 1)]
     (when (and (fennel.sym? (. ast 1)) (not= nil (. forms form)))
       (let [name (?. ast 2 1)]
-        (when (and (= :string (type name)) (string.match (tostring name) "[A-Z_]"))
+        (when (and
+                (= :string (type name))
+                (string.match (string.sub name 2) "[A-Z_]+"))
           (check-warning position "don't use [A-Z_] in names"))))))
 
 (ast-check :if->when true [ast]
