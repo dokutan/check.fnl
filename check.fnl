@@ -1,7 +1,7 @@
 #!/usr/bin/env fennel
 (local fennel (require :fennel))
 
-;;; miscellaneous functions
+;;; local variables
 (local ast-checks [])
 (local string-checks [])
 (local check-metadata {})
@@ -11,6 +11,7 @@
 (var show-checks? false)
 (local files [])
 
+;;; parse commandline arguments
 (while (. arg 1)
   (if
     (= "-h" (. arg 1)) (do
@@ -28,6 +29,7 @@
         (table.insert files (. arg 1))
         (table.remove arg 1))))
 
+;;; prepare config table
 (local config
   (if (not= nil config-path)
     (fennel.dofile config-path)
@@ -36,30 +38,31 @@
      :checks {}}))
 (when (= nil config.checks) (tset config :checks {}))
 
-;; ansi escape codes to colorize the output
+;;; ansi escape codes to colorize the output
 (local color
   (if (not= false config.color)
     {:red "\x1b[31m" :yellow "\x1b[33m" :blue "\x1b[34m" :default "\x1b[0m"}
     {:red "" :yellow "" :blue "" :default ""}))
 
-(macro ast-check [code enabled? param docstring body]
-  "Define an AST based check"
+;;; macros to define checks
+(macro defcheck [check-table code enabled? param docstring body]
+  "Generic macro to define a check"
   `(let [default?# ,enabled?
-          enabled?# (if (not= nil (. config.checks ,code)) (. config.checks ,code) default?#)]
+         enabled?# (if (not= nil (. config.checks ,code)) (. config.checks ,code) default?#)]
     (tset check-metadata ,code {:docstring ,docstring :default? default?# :enabled? enabled?#})
     (when enabled?#
-      (table.insert ast-checks
+      (table.insert ,check-table
         (fn ,param "" ,body)))))
+
+(macro ast-check [code enabled? param docstring body]
+  "Define an AST based check"
+  `(defcheck ast-checks ,code ,enabled? ,param ,docstring ,body))
 
 (macro string-check [code enabled? param docstring body]
   "Define a string based check"
-  `(let [default?# ,enabled?
-        enabled?# (if (not= nil (. config.checks ,code)) (. config.checks ,code) default?#)]
-    (tset check-metadata ,code {:docstring ,docstring :default? default?# :enabled? enabled?#})
-    (when enabled?#
-      (table.insert string-checks
-        (fn ,param "" ,body)))))
+  `(defcheck string-checks ,code ,enabled? ,param ,docstring ,body))
 
+;;; miscellaneous functions
 (fn ??. [t k ...]
   "Type-safe table lookup, returns nil if `t` is not a table"
   (if (not= 0 (length [...]))
@@ -94,7 +97,6 @@
   "Print an error"
   (set return-value 2)
   (print (.. color.red linenumber ": " message color.default "\n" (. current-lines (tonumber linenumber)))))
-
 
 ;;; AST based checks
 (ast-check :deprecated true [ast]
