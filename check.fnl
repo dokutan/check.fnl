@@ -2,7 +2,8 @@
 (local fennel (require :fennel))
 
 ;;; local variables
-(local ast-checks [])
+(local list-checks [])
+(local sym-checks [])
 (local string-checks [])
 (local check-metadata {})
 (var current-lines [])
@@ -54,9 +55,13 @@
       (table.insert ,check-table
         (fn ,param "" ,body)))))
 
-(macro ast-check [code enabled? param docstring body]
-  "Define an AST based check"
-  `(defcheck ast-checks ,code ,enabled? ,param ,docstring ,body))
+(macro list-check [code enabled? param docstring body]
+  "Define a check for lists"
+  `(defcheck list-checks ,code ,enabled? ,param ,docstring ,body))
+
+(macro sym-check [code enabled? param docstring body]
+  "Define a check for symbols"
+  `(defcheck sym-checks ,code ,enabled? ,param ,docstring ,body))
 
 (macro string-check [code enabled? param docstring body]
   "Define a string based check"
@@ -99,7 +104,8 @@
   (print (.. color.red linenumber ": " message color.default "\n" (. current-lines (tonumber linenumber)))))
 
 ;;; AST based checks
-(ast-check :deprecated true [ast]
+;;; (see https://fennel-lang.org/api#ast-node-definition for node types)
+(list-check :deprecated true [ast]
   "Checks for deprecated forms"
   (let [deprecated {:require-macros "0.4.0"
                     :pick-args "0.10.0"
@@ -110,25 +116,16 @@
     (when (and (fennel.sym? (. ast 1)) (not= nil since))
       (check-warning position (.. form " is deprecated since " since)))))
 
-(ast-check :symbols true [ast]
+(sym-check :symbols true [ast]
   "Checks names for bad symbols"
-  (let [forms {:local true
-               :var true
-               :global true
-               :macro true
-               :fn true
-               :lambda true
-               :λ true}
-        position (position->string ast)
-        form (??. ast 1 1)]
-    (when (and (fennel.sym? (. ast 1)) (not= nil (. forms form)))
-      (let [name (?. ast 2 1)]
-        (when (and
-                (= :string (type name))
-                (string.match (string.sub name 2) "[A-Z_]+"))
-          (check-warning position "don't use [A-Z_] in names"))))))
+  (let [position (position->string ast)
+        name (?. ast 1)]
+    (when (and
+            (= :string (type name))
+            (string.match (string.sub name 2) "[A-Z_]+"))
+      (check-warning position "don't use [A-Z_] in names"))))
 
-(ast-check :if->when true [ast]
+(list-check :if->when true [ast]
   "Checks for if expressions that can be replaced with when"
   (let [position (position->string ast)
         form (. ast 1)]
@@ -137,7 +134,7 @@
         (when (or (sym= else :nil) (= nil else))
           (check-warning position "if the body causes side-effects, replace this if with when"))))))
 
-(ast-check :docstring true [ast]
+(list-check :docstring true [ast]
   "Checks if functions and macros have docstrings"
   (let [position (position->string ast)
         form (. ast 1)]
@@ -148,7 +145,7 @@
         (when (or (<= (length ast) 4) (not= :string (type (?. ast 4))))
           (check-warning position (.. (. form 1) " " (tostring (?. ast 2 1)) " has no docstring")))))))
 
-(ast-check :useless-do true [ast]
+(list-check :useless-do true [ast]
   "Checks for useless do forms"
   (let [forms {:let true
                :fn true
@@ -164,7 +161,7 @@
             (when (sym= form2 :do)
               (check-warning position (.. "do is useless inside of " form)))))))))
 
-(ast-check :syntax-let true [ast]
+(list-check :syntax-let true [ast]
   "Checks for invalid let bindings"
   (let [position (position->string ast)
         form (. ast 1)]
@@ -178,7 +175,7 @@
         (when (< (length ast) 3)
           (check-error position "let requires a body"))))))
 
-(ast-check :syntax-when true [ast]
+(list-check :syntax-when true [ast]
   "Checks for invalid uses of when"
   (let [position (position->string ast)
         form (. ast 1)]
@@ -186,7 +183,7 @@
       (when (< (length ast) 3)
         (check-error position "when requires a body")))))
 
-(ast-check :syntax-if true [ast]
+(list-check :syntax-if true [ast]
   "Checks for invalid uses of if"
   (let [position (position->string ast)
         form (. ast 1)]
@@ -194,7 +191,7 @@
       (when (< (length ast) 3)
         (check-error position "if requires a condition and a body")))))
 
-(ast-check :useless-not true [ast]
+(list-check :useless-not true [ast]
   "Checks for uses of not that can be replaced"
   (let [position (position->string ast)
         form (. ast 1)]
@@ -218,21 +215,21 @@
           (sym= form :>=)
           (check-warning position "replace (not (>= ...)) with (< ...)"))))))
 
-(ast-check :identifier true [ast]
+(list-check :identifier true [ast]
   "Checks for lists that don't begin with an identifier"
   (let [position (position->string ast)
         form (??. ast 1)]
     (when (and (fennel.list? ast) (not (fennel.sym? form)))
       (check-warning position "this list doesn't begin with an identifier"))))
 
-(ast-check :local->let true [ast root?]
+(list-check :local->let true [ast root?]
   "Checks for locals that can be replaced with let"
   (let [position (position->string ast)
         form (??. ast 1)]
     (when (and (not root?) (sym= form :local))
       (check-warning position "this local can be replaced with let"))))
 
-(ast-check :syntax-relational true [ast]
+(list-check :syntax-relational true [ast]
   "Checks for relational operators that are missing an operand"
   (let [forms {:= true "~=" true :not= true :< true :<= true :> true :>= true}
         position (position->string ast)
@@ -243,7 +240,7 @@
             (< (length ast) 3))
       (check-error position (.. form " requires at least two arguments")))))
 
-(ast-check :useless-forms true [ast]
+(list-check :useless-forms true [ast]
   "Checks for forms that are useless with one argument"
   (let [forms {:+ true :% true :* true :. true :.. true :// true :?. true
                :^ true :or true :and true :math.min true :math.max true
@@ -256,7 +253,7 @@
             (< (length ast) 3))
       (check-warning position (.. form " is useless with a single argument")))))
 
-(ast-check :style-alternatives true [ast]
+(list-check :style-alternatives true [ast]
   "Checks for forms that have multiple names"
   (let [position (position->string ast)
         form (. ast 1)]
@@ -268,9 +265,13 @@
 
 (fn perform-ast-checks [ast root?]
   "Recursively performs checks on the AST"
-  (when (fennel.list? ast)
-    (each [_ check (ipairs ast-checks)]
-      (check ast root?)))
+  (if
+    (fennel.list? ast) ; e.g. function calls
+      (each [_ check (ipairs list-checks)]
+        (check ast root?))
+    (fennel.sym? ast) ; identifiers
+      (each [_ check (ipairs sym-checks)]
+        (check ast root?)))
   (when (= :table (type ast))
     (each [_ v (pairs ast)]
       (when (= :table (type v)) ; nested ast or table?
