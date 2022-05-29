@@ -1,0 +1,8 @@
+./in/tables.fnl
+1: key a occurs multiple times
+{:a 1 :a 2 :b 3}
+2: this table can be written as a sequence
+{1 :a 2 :b 3 :c}
+3: this table can be written as a sequence
+{2 :a 1 :b 3 :c}
+

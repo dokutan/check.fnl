@@ -4,6 +4,7 @@
 ;;; local variables
 (local list-checks [])
 (local sym-checks [])
+(local table-checks [])
 (local string-checks [])
 (local check-metadata {})
 (var current-lines [])
@@ -63,6 +64,10 @@
   "Define a check for symbols"
   `(defcheck sym-checks ,code ,enabled? ,param ,docstring ,body))
 
+(macro table-check [code enabled? param docstring body]
+  "Define a check for tables"
+  `(defcheck table-checks ,code ,enabled? ,param ,docstring ,body))
+
 (macro string-check [code enabled? param docstring body]
   "Define a string based check"
   `(defcheck string-checks ,code ,enabled? ,param ,docstring ,body))
@@ -89,9 +94,14 @@
         (print (.. (string.rep "  " depth) k " " (tostring v)))
         (print-table v (+ 1 depth))))))
 
-(fn position->string [pos]
-  "Returns the position of a keyword from the AST as a string"
-  (tostring (. pos :line)))
+(fn position->string [node]
+  "Returns the position of a AST node as a string"
+  (if
+    (not= nil (. node :line))
+      (tostring (. node :line))
+    (not= nil (. (getmetatable node) :line))
+      (tostring (. (getmetatable node) :line))
+    "?"))
 
 (fn check-warning [linenumber message]
   "Print a warning"
@@ -263,19 +273,30 @@
       (sym= form "~=")
       (check-warning position "~= can be replaced with not="))))
 
-(fn perform-ast-checks [ast root?]
-  "Recursively performs checks on the AST"
-  (if
-    (fennel.list? ast) ; e.g. function calls
-      (each [_ check (ipairs list-checks)]
-        (check ast root?))
-    (fennel.sym? ast) ; identifiers
-      (each [_ check (ipairs sym-checks)]
-        (check ast root?)))
-  (when (= :table (type ast))
-    (each [_ v (pairs ast)]
-      (when (= :table (type v)) ; nested ast or table?
-        (perform-ast-checks v false)))))
+(table-check :duplicate-keys true [ast]
+  "Checks for duplicate keys in tables"
+  (let [position (position->string ast)
+        keys {}]
+    (each [_ k (ipairs (. (getmetatable ast) :keys))]
+      (when (. keys k)
+        (check-warning position (.. "key " (tostring k) " occurs multiple times")))
+      (tset keys k true))))
+
+(table-check :table->sequence true [ast]
+  "Checks for tables that can be written as sequences"
+  (let [position (position->string ast)
+        keys {}]
+    (each [_ k (ipairs (. (getmetatable ast) :keys))]
+      (tset keys k true))
+    ((fn iterate [i sequence?]
+      (if
+        (<= i (length (. (getmetatable ast) :keys)))
+          (iterate
+            (+ 1 i)
+            (and sequence? (. keys i)))
+        (and sequence? (> i (length (. (getmetatable ast) :keys))))
+          (check-warning position "this table can be written as a sequence"))
+      ) 1 true)))
 
 ;;; string based checks
 (string-check :style-length true [line number]
@@ -297,13 +318,30 @@
   (when (string.match line "^[ \t]*[])}]+")
     (check-warning number "closing delimiters should not appear on their own line")))
 
+;;; main
+(fn perform-ast-checks [ast root?]
+  "Recursively performs checks on the AST"
+  (let [checks (if
+                  (fennel.list? ast) list-checks ; e.g. function calls
+                  (fennel.sym? ast) sym-checks ; identifiers
+                  (fennel.varg? ast) [] ; ...
+                  (fennel.comment? ast) [] ; comments
+                  (fennel.sequence? ast) [] ; tables produced by []
+                  (= :table (type ast)) table-checks ; tables produced by {}
+                  [])]
+    (each [_ check (ipairs checks)]
+        (check ast root?)))
+  (when (= :table (type ast))
+    (each [_ v (pairs ast)]
+      (when (= :table (type v)) ; nested ast or table?
+        (perform-ast-checks v false)))))
+
 (fn perform-string-checks []
   "Perfoms checks on each line in `file`"
   (each [number line (ipairs current-lines)]
     (each [_ check (ipairs string-checks)]
       (check line number))))
 
-;;; main
 (when show-checks?
   (each [code metadata (pairs check-metadata)]
     (let [pad1 (string.rep " " (- 20 (length code)))
