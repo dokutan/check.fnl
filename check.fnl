@@ -288,15 +288,16 @@
         keys {}]
     (each [_ k (ipairs (. (getmetatable ast) :keys))]
       (tset keys k true))
-    ((fn iterate [i sequence?]
-      (if
-        (<= i (length (. (getmetatable ast) :keys)))
-          (iterate
-            (+ 1 i)
-            (and sequence? (. keys i)))
-        (and sequence? (> i (length (. (getmetatable ast) :keys))))
-          (check-warning position "this table can be written as a sequence"))
-      ) 1 true)))
+    (when (> (length ast) 0)
+      ((fn iterate [i sequence?]
+        (if
+          (<= i (length (. (getmetatable ast) :keys)))
+            (iterate
+              (+ 1 i)
+              (and sequence? (. keys i)))
+          (and sequence? (> i (length (. (getmetatable ast) :keys))))
+            (check-warning position "this table can be written as a sequence"))
+        ) 1 true))))
 
 ;;; string based checks
 (string-check :style-length true [line number]
@@ -315,7 +316,7 @@
 
 (string-check :style-delimiters true [line number]
   "Checks if closing delimiters appear on their own line"
-  (when (string.match line "^[ \t]*[])}]+")
+  (when (string.match line "^[ \t]*[])}]+[ \t]*$")
     (check-warning number "closing delimiters should not appear on their own line")))
 
 ;;; main
