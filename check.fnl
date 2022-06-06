@@ -406,11 +406,16 @@
       (check line number))))
 
 (when show-checks?
-  (each [code metadata (pairs check-metadata)]
-    (let [pad1 (string.rep " " (- 20 (length code)))
-          enabled? (.. (if metadata.enabled? "true" "false") "(" (if metadata.default? "true" "false") ")")
-          pad2 (string.rep " " (- 13 (length enabled?))) ]
-      (print (.. code pad1 enabled? pad2 (or metadata.docstring "")))))
+  (let [codes []]
+    (each [code (pairs check-metadata)]
+      (table.insert codes code))
+    (table.sort codes)
+    (each [_ code (ipairs codes)]
+      (let [metadata (. check-metadata code)
+            pad1 (string.rep " " (- 20 (length code)))
+            enabled? (.. (if metadata.enabled? "true" "false") "(" (if metadata.default? "true" "false") ")")
+            pad2 (string.rep " " (- 13 (length enabled?)))]
+        (print (.. code pad1 enabled? pad2 (or metadata.docstring ""))))))
   (os.exit 0))
 
 (each [_ file (ipairs files)]
