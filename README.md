@@ -41,6 +41,7 @@ Currently check.fnl finds:
   - ``when``
   - ``if``
   - …
+- redefined symbols
 
 Not all checks are enabled by default, and some are likely to produce false positives.
 

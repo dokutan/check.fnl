@@ -8,6 +8,7 @@
 (local string-checks [])
 (local check-metadata {})
 (var current-lines [])
+(var current-symbols {})
 (var return-value 0)
 (var config-path nil)
 (var show-checks? false)
@@ -273,6 +274,37 @@
       (sym= form "~=")
       (check-warning position "~= can be replaced with not="))))
 
+(list-check :redefine true [ast root?]
+  "Checks for redefined symbols"
+  (when root?
+    (fn check-symbol [symbol position form]
+      "Checks if `symbol` has been previously defined, otherwise store it"
+      (if
+        (and symbol (. current-symbols symbol))
+          (check-warning
+            position
+            (..
+              "this " form " redefines "
+              (. current-symbols symbol :form) " " symbol
+              " (line " (. current-symbols symbol :position) ")"))
+        symbol
+          (tset
+            current-symbols
+            symbol
+            {:position position :form form})))
+      (let [form (. ast 1)
+            position (position->string ast)]
+        (if
+          (or (sym= form :global) (sym= form :local)
+              (sym= form :var) (sym= form :macro))
+            (check-symbol (. ast 2 1) position (. form 1))
+          (or (sym= form :fn) (sym= form :λ) (sym= form :lambda))
+            (if (fennel.sym? (. ast 2))
+              (check-symbol (. ast 2 1) position (. form 1)))
+          (sym= form :macros)
+            (each [k (pairs (. ast 2))]
+              (check-symbol k position (. form 1)))))))
+
 (table-check :duplicate-keys true [ast]
   "Checks for duplicate keys in tables"
   (let [position (position->string ast)
@@ -353,6 +385,7 @@
 
 (each [_ file (ipairs files)]
   (print (.. color.blue file color.default))
+  (set current-symbols {})
   ;; read all lines from file
   (set current-lines [])
   (let [file (io.open file)]

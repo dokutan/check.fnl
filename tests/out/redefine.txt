@@ -1,0 +1,10 @@
+./in/redefine.fnl
+2: this local redefines local a (line 1)
+(local a 2)
+5: this fn redefines var b (line 4)
+(fn b [] "" 2)
+8: this macro redefines fn c (line 7)
+(macro c [] "" 2)
+11: this macros redefines local d (line 10)
+(macros {:d 2 :e 3})
+
