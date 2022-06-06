@@ -305,6 +305,36 @@
             (each [k (pairs (. ast 2))]
               (check-symbol k position (. form 1)))))))
 
+(list-check :shadow true [ast root?]
+  "Checks for shadowed symbols"
+  (do
+    (fn check-symbol [symbol position form root?]
+      "Checks if `symbol` has been previously defined"
+      (if
+        (and symbol (. current-symbols symbol) (not root?))
+          (check-warning
+            position
+            (..
+              "this " form " shadows "
+              (. current-symbols symbol :form) " " symbol
+              " (line " (. current-symbols symbol :position) ")"))))
+      (let [form (. ast 1)
+            position (position->string ast)]
+        (if
+          (or (sym= form :global) (sym= form :local)
+              (sym= form :var) (sym= form :macro))
+            (check-symbol (. ast 2 1) position (. form 1) root?)
+          (or (sym= form :fn) (sym= form :λ) (sym= form :lambda))
+            (if (fennel.sym? (. ast 2))
+              (check-symbol (. ast 2 1) position (. form 1) root?))
+          (sym= form :macros)
+            (each [k (pairs (. ast 2))]
+              (check-symbol k position (. form 1) root?))
+          (sym= form :let)
+            (each [k v (ipairs (. ast 2))]
+              (when (= 1 (% k 2))
+                (check-symbol (. v 1) position (. form 1) false)))))))
+
 (table-check :duplicate-keys true [ast]
   "Checks for duplicate keys in tables"
   (let [position (position->string ast)

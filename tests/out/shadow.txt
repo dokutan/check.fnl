@@ -1,0 +1,6 @@
+./in/shadow.fnl
+3: this var shadows local a (line 1)
+  (var a 2)
+8: this let shadows local c (line 7)
+(let [b 2 c 3]
+
