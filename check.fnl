@@ -5,6 +5,7 @@
 (local list-checks [])
 (local sym-checks [])
 (local table-checks [])
+(local comment-checks [])
 (local string-checks [])
 (local check-metadata {})
 (var current-lines [])
@@ -68,6 +69,10 @@
 (macro table-check [code enabled? param docstring body]
   "Define a check for tables"
   `(defcheck table-checks ,code ,enabled? ,param ,docstring ,body))
+
+(macro comment-check [code enabled? param docstring body]
+  "Define a check for comments"
+  `(defcheck comment-checks ,code ,enabled? ,param ,docstring ,body))
 
 (macro string-check [code enabled? param docstring body]
   "Define a string based check"
@@ -361,20 +366,33 @@
             (check-warning position "this table can be written as a sequence"))
         ) 1 true))))
 
+(comment-check :style-comments true [ast]
+  "Checks if comments start with the correct number of semicolons"
+  (let [linenumber (position->string ast)]
+    (when (not= :? linenumber)
+      (let [linenumber (+ 1 (tonumber linenumber))
+            line (. current-lines linenumber)
+            comment-string (tostring ast)
+            code-string (string.sub line 1 (- (length line) (length comment-string)))]
+
+        (when (and (string.match code-string "^[ \t]*$")
+                   (string.match comment-string "^;[^;]*$"))
+          (check-warning
+            linenumber
+            "this comment should start with at least two semicolons"))
+
+        (when (and (string.match code-string "[^ \t;]+[ \t]*$")
+                   (string.match comment-string "^;;"))
+          (check-warning
+            linenumber
+            "this comment should start with one semicolon"))))))
+
 ;;; string based checks
 (string-check :style-length true [line number]
   "Checks if the line is to long"
   (let [max-line-length (or config.max-line-length 80)]
     (when (> (utf8.len line) max-line-length)
       (check-warning number (.. "line length exceeds " max-line-length " columns")))))
-
-(string-check :style-comments true [line number]
-  "Checks if comments start with the correct number of semicolons"
-  (do
-    (when (string.match line "^[ \t]*;[^;]+")
-      (check-warning number "this comment should start with at least two semicolons"))
-    (when (string.match line "[^ \t;]+[ \t]*;;")
-      (check-warning number "this comment should start with one semicolon"))))
 
 (string-check :style-delimiters true [line number]
   "Checks if closing delimiters appear on their own line"
@@ -388,7 +406,7 @@
                   (fennel.list? ast) list-checks ; e.g. function calls
                   (fennel.sym? ast) sym-checks ; identifiers
                   (fennel.varg? ast) [] ; ...
-                  (fennel.comment? ast) [] ; comments
+                  (fennel.comment? ast) comment-checks ; comments
                   (fennel.sequence? ast) [] ; tables produced by []
                   (= :table (type ast)) table-checks ; tables produced by {}
                   [])]
@@ -431,7 +449,7 @@
   ;; perform AST based checks
   (let [file (io.open file)
         str (file:read "*a")
-        parse (fennel.parser str)]
+        parse (fennel.parser str nil {:comments true})]
     (fn iterate []
       (let [(ok ast) (parse)]
         (when ok
