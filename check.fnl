@@ -340,6 +340,14 @@
               (when (= 1 (% k 2))
                 (check-symbol (. v 1) position (. form 1) false)))))))
 
+(list-check :style-bad-forms true [ast]
+  "Checks for forms that should be avoided"
+  (let [forms {:> true :>= true :hashfn true :eval-compiler true :lua true}
+        position (position->string ast)
+        form (??. ast 1 1)]
+    (when (. forms form)
+      (check-warning position (.. "avoid using " form)))))
+
 (table-check :duplicate-keys true [ast]
   "Checks for duplicate keys in tables"
   (let [position (position->string ast)
