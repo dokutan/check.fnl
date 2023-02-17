@@ -9,6 +9,7 @@
 (local string-checks [])
 (local check-metadata {})
 (var current-lines [])
+(var skip-current-lines {})
 (var current-symbols {})
 (var return-value 0)
 (var config-path nil)
@@ -111,13 +112,15 @@
 
 (fn check-warning [linenumber message]
   "Print a warning"
-  (when (= return-value 0) (set return-value 1))
-  (print (.. color.yellow linenumber ": " message color.default "\n" (. current-lines (tonumber linenumber)))))
+  (when (not (. skip-current-lines (tostring linenumber)))
+    (when (= return-value 0) (set return-value 1))
+    (print (.. color.yellow linenumber ": " message color.default "\n" (. current-lines (tonumber linenumber))))))
 
 (fn check-error [linenumber message]
   "Print an error"
-  (set return-value 2)
-  (print (.. color.red linenumber ": " message color.default "\n" (. current-lines (tonumber linenumber)))))
+  (when (not (. skip-current-lines (tostring linenumber)))
+    (set return-value 2)
+    (print (.. color.red linenumber ": " message color.default "\n" (. current-lines (tonumber linenumber))))))
 
 ;;; AST based checks
 ;;; (see https://fennel-lang.org/api#ast-node-definition for node types)
@@ -431,6 +434,18 @@
       (when (= :table (type v)) ; nested ast or table?
         (perform-ast-checks v false)))))
 
+(fn parse-directives [ast]
+  "Check if `ast` contains comments to disable checks"
+  (if (fennel.comment? ast)
+    (let [linenumber (position->string ast)]
+      (when (and (not= :? linenumber)
+                 (string.match (tostring ast) "no%-check"))
+        (tset skip-current-lines (->> linenumber tonumber (+ 1) tostring) true)))
+    (when (= :table (type ast))
+      (each [_ v (pairs ast)]
+        (when (= :table (type v)) ; nested ast or table?
+          (parse-directives v))))))
+
 (fn perform-string-checks []
   "Perfoms checks on each line in `file`"
   (each [number line (ipairs current-lines)]
@@ -453,14 +468,15 @@
 (each [_ file (ipairs files)]
   (print (.. color.blue file color.default))
   (set current-symbols {})
-  ;; read all lines from file
   (set current-lines [])
+  (set skip-current-lines {})
+
+  ;; read all lines from file
   (let [file (io.open file)]
     (each [line (file:lines)]
       (table.insert current-lines line)))
-  ;; perform string based checks
-  (perform-string-checks)
-  ;; perform AST based checks
+
+  ;; parse directives to skip checks
   (let [file (io.open file)
         str (file:read "*a")
         parse (fennel.parser str nil {:comments true})]
@@ -468,8 +484,24 @@
       (let [(ok ast) (parse)]
         (when ok
           (do
-            (perform-ast-checks ast true)
+            (parse-directives ast)
             (iterate)))))
     (iterate))
+
+  ;; perform string based checks
+  (perform-string-checks)
+
+  ;; perform AST-based checks
+  (let [file (io.open file)
+      str (file:read "*a")
+      parse (fennel.parser str nil {:comments true})]
+  (fn iterate []
+    (let [(ok ast) (parse)]
+      (when ok
+        (do
+          (perform-ast-checks ast true)
+          (iterate)))))
+  (iterate))
   (print))
+
 (os.exit return-value)

@@ -45,6 +45,12 @@ Currently check.fnl finds:
 
 Not all checks are enabled by default, and some are likely to produce false positives.
 
+## Directives
+A line with a comment containing ``no-check`` will suppress all errors for that line:
+```
+(+ 1) ; no-check
+```
+
 ## References
 - The Fennel reference: https://fennel-lang.org/reference
 - The Fennel style guide: https://fennel-lang.org/style
