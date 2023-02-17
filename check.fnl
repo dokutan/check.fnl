@@ -153,12 +153,18 @@
 (list-check :docstring true [ast]
   "Checks if functions and macros have docstrings"
   (let [position (position->string ast)
-        form (. ast 1)]
+        form (. ast 1)
+        has-docstring?
+        (fn [ast pos]
+          (or (= :string (type (?. ast pos)))
+              (and (= :table (type (?. ast pos)))
+                   (= :string (type (??. (?. ast pos) :fnl/docstring))))))]
+
     (when (or (sym= form :fn) (sym= form :macro) (sym= form :lambda) (sym= form :λ))
       (if (fennel.sequence? (?. ast 2))
-        (when (or (<= (length ast) 3) (not= :string (type (?. ast 3))))
+        (when (or (<= (length ast) 3) (not (has-docstring? ast 3)))
           (check-warning position (.. "anonymous " (. form 1) " has no docstring")))
-        (when (or (<= (length ast) 4) (not= :string (type (?. ast 4))))
+        (when (or (<= (length ast) 4) (not (has-docstring? ast 4)))
           (check-warning position (.. (. form 1) " " (tostring (?. ast 2 1)) " has no docstring")))))))
 
 (list-check :useless-do true [ast]

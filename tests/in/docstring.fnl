@@ -1,2 +1,5 @@
 (fn a [] "prints a" (print "a"))
 (fn b [] (print "b"))
+(fn c [] {:foo :bar} (print "c"))
+(fn d [] {:fnl/docstring ""} (print "d"))
+(fn [] nil)
