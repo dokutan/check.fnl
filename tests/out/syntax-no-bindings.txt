@@ -1,0 +1,8 @@
+./in/syntax-no-bindings.fnl
+1: let requires a binding table as the first argument
+(let a 1)
+2: let requires a binding table as the first argument
+(let (a 1) a)
+3: for requires a binding table as the first argument
+(for i 1 2 (print i))
+

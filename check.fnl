@@ -192,10 +192,10 @@
         form (. ast 1)]
     (when (sym= form :let)
       (let [bindings (??. ast 2)]
-        (when (and (= :table (type bindings)) (not= 0 (% (length bindings) 2)))
-          (check-error position "let requires an even number of bindings"))
-        (when (< (length ast) 3)
-          (check-error position "let requires a body"))))))
+        (when (and (fennel.table? bindings) (= 0 (length bindings)))
+          (check-warning position "let has no bindings"))
+        (when (and (fennel.table? bindings) (not= 0 (% (length bindings) 2)))
+          (check-error position "let requires an even number of bindings"))))))
 
 (list-check :syntax-no-bindings true [ast]
   "Checks for missing binding tables"
@@ -213,13 +213,24 @@
         (when (not (fennel.sequence? bindings))
           (check-error position (.. form " requires a binding table as the first argument")))))))
 
-(list-check :syntax-when true [ast]
-  "Checks for invalid uses of when"
-  (let [position (position->string ast)
-        form (. ast 1)]
-    (when (sym= form :when)
-      (when (< (length ast) 3)
-        (check-error position "when requires a body")))))
+(list-check :syntax-body true [ast]
+  "Checks for missing or wrong body expressions"
+  (let [forms {:let true
+               :for true
+               :icollect 1
+               :collect 2
+               :fcollect 1
+               :accumulate 1
+               :faccumulate 1
+               :when true}
+        position (position->string ast)
+        form (??. ast 1 1)]
+    (when (and (. forms form) (< (length ast) 3))
+      (check-error position (.. form " requires a body")))
+    (when (and (= 1 (. forms form)) (> (length ast) 3))
+      (check-error position (.. form " requires exactly one body expression")))
+    (when (and (= 2 (. forms form)) (> (length ast) 4))
+      (check-error position (.. form " requires exactly one or two body expression")))))
 
 (list-check :syntax-if true [ast]
   "Checks for invalid uses of if"

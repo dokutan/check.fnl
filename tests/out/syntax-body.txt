@@ -1,0 +1,12 @@
+./in/syntax-body.fnl
+2: for requires a body
+(for [i 1 2])
+3: when requires a body
+(when true)
+5: faccumulate requires exactly one body expression
+(faccumulate [r 0 i 1 9] (print r) (+ r i))
+6: fcollect requires exactly one body expression
+(fcollect [i 1 5] (print i) i)
+7: collect requires exactly one or two body expression
+(collect [k v {:a :b}] (print k v) k v)
+

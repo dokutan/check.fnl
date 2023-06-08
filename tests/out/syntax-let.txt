@@ -1,0 +1,6 @@
+./in/syntax-let.fnl
+1: let has no bindings
+(let [] nil)
+2: let requires an even number of bindings
+(let [b 2 c] nil)
+
