@@ -3,4 +3,6 @@
 (global g 1)
 2: pick-args is deprecated since 0.10.0
 (pick-args 2 +)
+3: :until is deprecated in faccumulate, use &until
+(faccumulate [result "" i 1 10 :until (= i 5)]
 
