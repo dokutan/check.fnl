@@ -437,7 +437,7 @@
   "Checks if comments start with the correct number of semicolons"
   (let [linenumber (position->string ast)]
     (when (not= :? linenumber)
-      (let [linenumber (+ 1 (tonumber linenumber))
+      (let [linenumber (tonumber linenumber)
             line (. current-lines linenumber)
             comment-string (tostring ast)
             code-string (string.sub line 1 (- (length line) (length comment-string)))]
@@ -490,7 +490,7 @@
     (let [linenumber (position->string ast)]
       (when (and (not= :? linenumber)
                  (string.match (tostring ast) "no%-check"))
-        (tset skip-current-lines (->> linenumber tonumber (+ 1) tostring) true)))
+        (tset skip-current-lines (->> linenumber tonumber tostring) true)))
     (when (= :table (type ast))
       (each [_ v (pairs ast)]
         (when (= :table (type v)) ; nested ast or table?
