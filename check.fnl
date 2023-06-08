@@ -135,6 +135,31 @@
     (when (and (fennel.sym? (. ast 1)) (not= nil since))
       (check-warning position (.. form " is deprecated since " since)))))
 
+(list-check :deprecated-clause true [ast]
+  "Checks for the use of :until/:into or instead of &until/&into"
+  (let [forms {:for true
+               :each true
+               :icollect true
+               :collect true
+               :fcollect true
+               :accumulate true
+               :faccumulate true}
+        position (position->string ast)
+        form (??. ast 1 1)]
+    (when (. forms form)
+      (let [bindings (??. ast 2)]
+        (when (fennel.table? bindings)
+          (let [clauses
+                (icollect [_ v (pairs bindings)]
+                  (if (or (= :until v) (= :into v))
+                    v nil))]
+            (each [_ v (ipairs clauses)]
+              (if
+                (= v :until)
+                (check-warning position (.. ":until is deprecated in " form ", use &until"))
+                (= v :into)
+                (check-warning position (.. ":into is deprecated in " form ", use &into"))))))))))
+
 (sym-check :symbols true [ast]
   "Checks names for bad symbols"
   (let [position (position->string ast)
@@ -201,6 +226,7 @@
   "Checks for missing binding tables"
   (let [forms {:let true
                :for true
+               :each true
                :icollect true
                :collect true
                :fcollect true
@@ -230,7 +256,7 @@
     (when (and (= 1 (. forms form)) (> (length ast) 3))
       (check-error position (.. form " requires exactly one body expression")))
     (when (and (= 2 (. forms form)) (> (length ast) 4))
-      (check-error position (.. form " requires exactly one or two body expression")))))
+      (check-error position (.. form " requires exactly one or two body expressions")))))
 
 (list-check :syntax-if true [ast]
   "Checks for invalid uses of if"

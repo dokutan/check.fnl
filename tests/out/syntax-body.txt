@@ -7,6 +7,6 @@
 (faccumulate [r 0 i 1 9] (print r) (+ r i))
 6: fcollect requires exactly one body expression
 (fcollect [i 1 5] (print i) i)
-7: collect requires exactly one or two body expression
+7: collect requires exactly one or two body expressions
 (collect [k v {:a :b}] (print k v) k v)
 
