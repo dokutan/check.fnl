@@ -192,13 +192,26 @@
         form (. ast 1)]
     (when (sym= form :let)
       (let [bindings (??. ast 2)]
-        (if
-          (or (not (fennel.sequence? bindings)) (fennel.sym? bindings))
-          (check-error position "let requires a table as the first argument")
-          (not= 0 (% (length bindings) 2))
+        (when (and (= :table (type bindings)) (not= 0 (% (length bindings) 2)))
           (check-error position "let requires an even number of bindings"))
         (when (< (length ast) 3)
           (check-error position "let requires a body"))))))
+
+(list-check :syntax-no-bindings true [ast]
+  "Checks for missing binding tables"
+  (let [forms {:let true
+               :for true
+               :icollect true
+               :collect true
+               :fcollect true
+               :accumulate true
+               :faccumulate true}
+        position (position->string ast)
+        form (??. ast 1 1)]
+    (when (. forms form)
+      (let [bindings (??. ast 2)]
+        (when (not (fennel.sequence? bindings))
+          (check-error position (.. form " requires a binding table as the first argument")))))))
 
 (list-check :syntax-when true [ast]
   "Checks for invalid uses of when"
@@ -341,10 +354,10 @@
           (or (sym= form :fn) (sym= form :λ) (sym= form :lambda))
             (if (fennel.sym? (. ast 2))
               (check-symbol (. ast 2 1) position (. form 1) root?))
-          (sym= form :macros)
+          (and (= :table (type (. ast 2))) (sym= form :macros))
             (each [k (pairs (. ast 2))]
               (check-symbol k position (. form 1) root?))
-          (sym= form :let)
+          (and (= :table (type (. ast 2))) (sym= form :let))
             (each [k v (ipairs (. ast 2))]
               (when (= 1 (% k 2))
                 (check-symbol (. v 1) position (. form 1) false)))))))
