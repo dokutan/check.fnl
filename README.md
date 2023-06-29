@@ -23,6 +23,8 @@ A [configuration file](configuration.md) can be specified with the ``-c`` option
 Use the ``-s`` option to show a list of all checks.
 
 ## Features
+The analysed code is not executed, only parsed by the Fennel parser.
+
 Currently check.fnl finds:
 - deprecated forms
 - bad style

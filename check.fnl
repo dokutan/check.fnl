@@ -197,18 +197,21 @@
 
 (list-check :useless-do true [ast]
   "Checks for useless do forms"
-  (let [forms {:let true
-               :fn true
-               :lambda true
-               :λ true
-               :do true}
+  (let [forms {:let 2
+               :fn 2
+               :lambda 2
+               :λ 2
+               :do 2
+               :when 3}
         form (??. ast 1 1)]
     (when (. forms form)
-      (each [_ v (pairs ast)]
-        (when (fennel.list? v)
-          (let [form2 (. v 1)
-                position (position->string v)]
-            (when (sym= form2 :do)
+      (each [index node (pairs ast)]
+        (when (fennel.list? node)
+          (let [form2 (. node 1)
+                position (position->string node)]
+            (when (and
+                    (sym= form2 :do)
+                    (<= (. forms form) index))
               (check-warning position (.. "do is useless inside of " form)))))))))
 
 (list-check :syntax-let true [ast]
@@ -520,38 +523,46 @@
   (set current-symbols {})
   (set current-lines [])
   (set skip-current-lines {})
+  (var skip-file false)
 
-  ;; read all lines from file
-  (let [file (io.open file)]
-    (each [line (file:lines)]
-      (table.insert current-lines line)))
+  (with-open [f (io.open file)]
+    ;; read all lines from file as a table
+    (each [line (f:lines)]
+      (table.insert current-lines line))
 
-  ;; parse directives to skip checks
-  (let [file (io.open file)
-        str (file:read "*a")
-        parse (fennel.parser str nil {:comments true})]
-    (fn iterate []
-      (let [(ok ast) (parse)]
-        (when ok
-          (do
-            (parse-directives ast)
-            (iterate)))))
-    (iterate))
+    ;; read whole file as a string
+    (f:seek :set 0)
+    (let [current-file (f:read "*a")]
 
-  ;; perform string based checks
-  (perform-string-checks)
+      ;; parse directives to skip checks
+      (let [parse (fennel.parser current-file nil {:comments true})]
+        (fn iterate []
+          (let [(pcall-ok parse-ok ast) (pcall parse)]
+            (if
+              (and pcall-ok parse-ok)
+              (do
+                (parse-directives ast)
+                (iterate))
 
-  ;; perform AST-based checks
-  (let [file (io.open file)
-      str (file:read "*a")
-      parse (fennel.parser str nil {:comments true})]
-  (fn iterate []
-    (let [(ok ast) (parse)]
-      (when ok
-        (do
-          (perform-ast-checks ast true)
+              (not pcall-ok)
+              (do
+                (set skip-file true)
+                (check-error 1 parse-ok)))))
+        (iterate))
+
+      (when (not skip-file)
+        ;; perform string based checks
+        (perform-string-checks)
+
+        ;; perform AST-based checks
+        (let [parse (fennel.parser current-file nil {:comments true})]
+          (fn iterate []
+            (let [(pcall-ok parse-ok ast) (pcall parse)]
+              (when (and pcall-ok parse-ok)
+                (perform-ast-checks ast true)
+                (iterate))))
           (iterate)))))
-  (iterate))
+
   (print))
 
 (os.exit return-value)
