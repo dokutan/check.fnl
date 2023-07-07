@@ -269,6 +269,32 @@
       (when (< (length ast) 3)
         (check-error position "if requires a condition and a body")))))
 
+(list-check :syntax-for true [ast]
+  "Checks for syntax errors in the for binding table"
+  (let [position (position->string ast)
+        form (. ast 1)
+        bindings (??. ast 2)]
+    (when (and
+            (sym= form :for)
+            (fennel.sequence? bindings)
+            (< (length bindings) 3))
+      (check-error position "for requires a binding table with a symbol, start and stop points"))))
+
+(list-check :for->each true [ast]
+  "Checks for uses of for that should be replaced with each"
+  (let [position (position->string ast)
+        form (. ast 1)
+        bindings (??. ast 2)]
+    (when (and
+            (sym= form :for)
+            (fennel.sequence? bindings))
+      (each [_ i (pairs bindings)]
+        (when (and
+                (fennel.list? i)
+                (or (sym= (. i 1) :pairs)
+                    (sym= (. i 1) :ipairs)))
+          (check-warning position "use each instead of for for general iteration"))))))
+
 (list-check :useless-not true [ast]
   "Checks for uses of not that can be replaced"
   (let [position (position->string ast)
@@ -479,7 +505,7 @@
                   (fennel.comment? ast) comment-checks ; comments
                   (fennel.sequence? ast) [] ; tables produced by []
                   (= :table (type ast)) table-checks ; tables produced by {}
-                  [])]
+                  :else [])]
     (each [_ check (ipairs checks)]
         (check ast root?)))
   (when (= :table (type ast))

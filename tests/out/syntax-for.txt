@@ -1,0 +1,8 @@
+./in/syntax-for.fnl
+1: for requires a binding table with a symbol, start and stop points
+(for [] nil)
+3: for requires a binding table with a symbol, start and stop points
+(for [i 1]
+6: for requires a binding table with a symbol, start and stop points
+(for [i [1 2 3]]
+
