@@ -23,12 +23,12 @@
 
 ;;; load config, this needs to be done before other modules are required
 (when config-path
-  ((. (require :src.config) :load) config-path))
-(local config ((. (require :src.config) :get)))
+  ((. (require :config) :load) config-path))
+(local config ((. (require :config) :get)))
 
 ;;; require
 (local fennel (require :fennel))
-(local {: position->string : color : check-error} (require :src.utils))
+(local {: position->string : color : check-error} (require :utils))
 
 ;;; local variables
 (local check-metadata {})
@@ -38,11 +38,11 @@
 (var return-value 0)
 
 ;;; require checks
-(local list-checks (require :src.list-checks))
-(local sym-checks (require :src.sym-checks))
-(local table-checks (require :src.table-checks))
-(local comment-checks (require :src.comment-checks))
-(local string-checks (require :src.string-checks))
+(local list-checks (require :list-checks))
+(local sym-checks (require :sym-checks))
+(local table-checks (require :table-checks))
+(local comment-checks (require :comment-checks))
+(local string-checks (require :string-checks))
 
 ;;; main
 (fn perform-ast-checks [context ast root?]

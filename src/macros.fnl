@@ -1,7 +1,7 @@
 ;; fennel-ls: macro-file
 "Macros to define checks."
 
-(local config ((. (require :src.config) :get)))
+(local config ((. (require :config) :get)))
 
 ;(local list-checks [])
 (local check-metadata {})

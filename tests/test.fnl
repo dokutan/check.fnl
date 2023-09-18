@@ -13,7 +13,7 @@
     (set tests (+ 1 tests))
     (if out-file
       (let [expected (: out-file :read "*a")
-            results (: (io.popen (.. "lua ../check.lua -c test-config.fnl " in)) :read "*a")]
+            results (: (io.popen (.. "../check.fnl -c test-config.fnl " in)) :read "*a")]
         (if (= expected results)
           (do
             (set tests-ok (+ 1 tests-ok))

@@ -1,5 +1,5 @@
 (local fennel (require :fennel))
-(local config ((. (require :src.config) :get)))
+(local config ((. (require :config) :get)))
 
 ;;; ansi escape codes to colorize the output
 (local color

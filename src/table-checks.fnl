@@ -1,6 +1,6 @@
-(import-macros {: defcheck} :src.macros)
-(local {: position->string : check-warning} (require :src.utils))
-(local config ((. (require :src.config) :get)))
+(import-macros {: defcheck} :macros)
+(local {: position->string : check-warning} (require :utils))
+(local config ((. (require :config) :get)))
 
 (local table-checks [])
 (macro table-check [code enabled? param docstring body]
