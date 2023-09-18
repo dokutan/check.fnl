@@ -9,9 +9,9 @@ A linter for [Fennel](https://fennel-lang.org)
 It is recommended that you install Fennel using your package manager, this should take care of all dependencies. If you don't have Fennel properly installed, you might need to download the Fennel Lua module and place it in the same directory as check.fnl.
 
 ## Usage
-Download check.fnl and run
+Clone this repository and run
 ```
-chmod +x check.fnl
+make
 ./check.fnl file1.fnl file2.fnl …
 ```
 
