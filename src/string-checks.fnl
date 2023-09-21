@@ -5,7 +5,7 @@
 (local string-checks [])
 (macro string-check [code enabled? param docstring body]
   "Define a check for lists"
-  `(defcheck string-checks ,code ,enabled? ,param ,docstring ,body))
+  `(defcheck string-checks :line #true ,code ,enabled? ,param ,docstring ,body))
 
 (string-check :style-length true [context line number]
   "Checks if the line is to long"

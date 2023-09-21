@@ -1,11 +1,12 @@
 (import-macros {: defcheck} :macros)
+(local fennel (require :fennel))
 (local {: position->string : check-warning} (require :utils))
 (local config ((. (require :config) :get)))
 
 (local comment-checks [])
 (macro comment-check [code enabled? param docstring body]
   "Define a check for lists"
-  `(defcheck comment-checks ,code ,enabled? ,param ,docstring ,body))
+  `(defcheck comment-checks :ast fennel.comment? ,code ,enabled? ,param ,docstring ,body))
 
 (comment-check :style-comments true [context ast]
   "Checks if comments start with the correct number of semicolons"

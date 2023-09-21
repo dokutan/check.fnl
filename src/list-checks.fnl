@@ -6,7 +6,7 @@
 (local list-checks [])
 (macro list-check [code enabled? param docstring body]
   "Define a check for lists"
-  `(defcheck list-checks ,code ,enabled? ,param ,docstring ,body))
+  `(defcheck list-checks :ast fennel.list? ,code ,enabled? ,param ,docstring ,body))
 
 (list-check :deprecated true [context ast]
   "Checks for deprecated forms"

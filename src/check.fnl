@@ -1,5 +1,10 @@
 #!/usr/bin/env fennel
 
+(macro load-checks [checks module]
+  "Load the checks from `module` into `checks`."
+  `(each [k# v# (pairs (require ,module))]
+    (tset ,checks k# v#)))
+
 ;;; parse commandline arguments
 (var config-path nil)
 (var show-checks? false)
@@ -31,36 +36,53 @@
 (local {: position->string : color : check-error} (require :utils))
 
 ;;; local variables
-(local check-metadata {})
 (var current-lines [])
 (var skip-current-lines {})
 (var current-symbols {})
 (var return-value 0)
 
 ;;; require checks
-(local list-checks (require :list-checks))
-(local sym-checks (require :sym-checks))
-(local table-checks (require :table-checks))
-(local comment-checks (require :comment-checks))
-(local string-checks (require :string-checks))
+(local checks {})
+(local check-names [])
+(load-checks checks :list-checks)
+(load-checks checks :sym-checks)
+(load-checks checks :table-checks)
+(load-checks checks :comment-checks)
+(load-checks checks :string-checks)
+
+;; generate a sorted list of check names to enable stable iteration
+(each [name (pairs checks)]
+  (table.insert check-names name))
+(table.sort check-names)
+
+;;; show checks?
+(when show-checks?
+  (each [_ name (ipairs check-names)]
+    (let [metadata (. checks name)
+          pad1 (string.rep " " (- 20 (length name)))
+          enabled? (.. (if metadata.enabled? "true" "false") "(" (if metadata.default? "true" "false") ")")
+          pad2 (string.rep " " (- 13 (length enabled?)))]
+      (print (.. name pad1 enabled? pad2 (or metadata.docstring "")))))
+  (os.exit 0))
 
 ;;; main
 (fn perform-ast-checks [context ast root?]
   "Recursively performs checks on the AST"
-  (let [checks (if
-                  (fennel.list? ast) list-checks ; e.g. function calls
-                  (fennel.sym? ast) sym-checks ; identifiers
-                  (fennel.varg? ast) [] ; ...
-                  (fennel.comment? ast) comment-checks ; comments
-                  (fennel.sequence? ast) [] ; tables produced by []
-                  (= :table (type ast)) table-checks ; tables produced by {}
-                  :else [])]
-    (each [_ check (ipairs checks)]
-      (check context ast root?)))
+  (each [_ name (ipairs check-names)]
+    (let [check (. checks name)]
+      (when (and (= :ast check.type) (check.apply? ast))
+        (check.fn context ast root?))))
   (when (= :table (type ast))
     (each [_ v (pairs ast)]
       (when (= :table (type v)) ; nested ast or table?
         (perform-ast-checks context v false)))))
+
+(fn perform-string-checks []
+  "Perfoms checks on each line in `file`"
+  (each [number line (ipairs current-lines)]
+    (each [_ check (pairs checks)]
+      (when (= :line check.type)
+        (check.fn {: current-lines : skip-current-lines : current-symbols} line number)))))
 
 (fn parse-directives [ast]
   "Check if `ast` contains comments to disable checks"
@@ -73,25 +95,6 @@
       (each [_ v (pairs ast)]
         (when (= :table (type v)) ; nested ast or table?
           (parse-directives v))))))
-
-(fn perform-string-checks []
-  "Perfoms checks on each line in `file`"
-  (each [number line (ipairs current-lines)]
-    (each [_ check (ipairs string-checks)]
-      (check {: current-lines : skip-current-lines : current-symbols} line number))))
-
-(when show-checks?
-  (let [codes []]
-    (each [code (pairs check-metadata)]
-      (table.insert codes code))
-    (table.sort codes)
-    (each [_ code (ipairs codes)]
-      (let [metadata (. check-metadata code)
-            pad1 (string.rep " " (- 20 (length code)))
-            enabled? (.. (if metadata.enabled? "true" "false") "(" (if metadata.default? "true" "false") ")")
-            pad2 (string.rep " " (- 13 (length enabled?)))]
-        (print (.. code pad1 enabled? pad2 (or metadata.docstring ""))))))
-  (os.exit 0))
 
 (each [_ file (ipairs files)]
   (print (.. color.blue file color.default))
