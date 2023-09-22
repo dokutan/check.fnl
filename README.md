@@ -1,6 +1,7 @@
 # check.fnl
 A linter for [Fennel](https://fennel-lang.org)
 
+![tests](https://github.com/dokutan/check.fnl/actions/workflows/test.yml/badge.svg)
 ## Dependencies
 - Fennel interpreter
 - Lua interpreter (required by Fennel)
