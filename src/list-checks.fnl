@@ -194,7 +194,7 @@
           (sym= form :>=)
           (check-warning context position "replace (not (>= ...)) with (< ...)"))))))
 
-(list-check :identifier true [context ast]
+(list-check :identifier false [context ast]
   "Checks for lists that don't begin with an identifier"
   (let [position (position->string ast)
         form (??. ast 1)]
