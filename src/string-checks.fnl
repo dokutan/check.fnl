@@ -1,5 +1,5 @@
 (import-macros {: defcheck} :macros)
-(local {: position->string : check-warning} (require :utils))
+(local {: check-warning} (require :utils))
 (local config ((. (require :config) :get)))
 
 (local string-checks [])

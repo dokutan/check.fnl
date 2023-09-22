@@ -1,7 +1,6 @@
 (import-macros {: defcheck} :macros)
 (local fennel (require :fennel))
 (local {: ??. : position->string : check-warning : check-error : sym=} (require :utils))
-(local config ((. (require :config) :get)))
 
 (local list-checks [])
 (macro list-check [code enabled? param docstring body]
