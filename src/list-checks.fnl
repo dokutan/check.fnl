@@ -1,4 +1,4 @@
-(import-macros {: defcheck} :macros)
+(import-macros {: defcheck : list=} :macros)
 (local fennel (require :fennel))
 (local {: ??. : position->string : check-warning : check-error : sym=} (require :utils))
 
@@ -310,5 +310,48 @@
         form (??. ast 1 1)]
     (when (. forms form)
       (check-warning context position (.. "avoid using " form)))))
+
+(list-check :cljlib/predicates false [context ast]
+  "Checks for comparisons that can be repleced with cljlib predicates"
+  (let [position (position->string ast)]
+    (if
+      (or (list= ast (= nil ...)) (list= ast (= ... nil)))
+      (check-warning context position "use cljlib.nil? instead of (= nil ...)")
+
+      (or (list= ast (= 0 ...)) (list= ast (= ... 0)))
+      (check-warning context position "use cljlib.zero? instead of (= 0 ...)")
+
+      (list= ast (> ... 0))
+      (check-warning context position "use cljlib.pos? instead of (> ... 0)")
+
+      (list= ast (< 0 ...))
+      (check-warning context position "use cljlib.pos? instead of (< 0 ...)")
+
+      (list= ast (< ... 0))
+      (check-warning context position "use cljlib.neg? instead of (< ... 0)")
+
+      (list= ast (> 0 ...))
+      (check-warning context position "use cljlib.neg? instead of (> 0 ...)")
+
+      (or (list= ast (= (% ... 2) 0)) (list= ast (= 0 (% ... 2))))
+      (check-warning context position "use cljlib.even? instead of (= 0 (% ... 2))")
+
+      (or (list= ast (not= (% ... 2) 0)) (list= ast (not= 0 (% ... 2))))
+      (check-warning context position "use cljlib.odd? instead of (not= 0 (% ... 2))")
+
+      (or (list= ast (= (% ... 2) 1)) (list= ast (= 1 (% ... 2))))
+      (check-warning context position "use cljlib.odd? instead of (= 1 (% ... 2))")
+
+      (or (list= ast (= (type ...) :string)) (list= ast (= :string (type ...))))
+      (check-warning context position "use cljlib.string? instead of (= :string (type ...))")
+
+      (or (list= ast (= (type ...) :boolean)) (list= ast (= :boolean (type ...))))
+      (check-warning context position "use cljlib.boolean? instead of (= :boolean (type ...))")
+
+      (or (list= ast (= true ...)) (list= ast (= ... true)))
+      (check-warning context position "use cljlib.true? instead of (= true ...)")
+
+      (or (list= ast (= false ...)) (list= ast (= ... false)))
+      (check-warning context position "use cljlib.false? instead of (= false ...)"))))
 
 list-checks
