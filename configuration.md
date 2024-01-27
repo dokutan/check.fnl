@@ -16,6 +16,7 @@ Call check.fnl with the ``-c`` option to specify the config file.
 ## options
 option | type | default value | description
 --- | --- | --- | ---
-``color`` | boolean | ``true`` | 
+``color`` | boolean | ``true`` | colorize the output?
 ``max-line-length`` | integer | ``80`` | 
+``anonymous-docstring`` | booleam | ``false`` | should anonymous functions and macros have a docstring?
 ``checks`` | table | ``{}`` | use this table to enable or disable checks

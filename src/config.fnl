@@ -5,6 +5,7 @@
 (var config
   {:color true
    :max-line-length nil
+   :anonymous-docstring false
    :checks {}})
 
 (λ get-config []

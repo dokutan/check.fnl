@@ -2,6 +2,8 @@
 (local fennel (require :fennel))
 (local {: ??. : position->string : check-warning : check-error : sym=} (require :utils))
 
+(local config ((. (require :config) :get)))
+
 (local list-checks [])
 (macro list-check [code enabled? param docstring body]
   "Define a check for lists"
@@ -65,7 +67,8 @@
 
     (when (or (sym= form :fn) (sym= form :macro) (sym= form :lambda) (sym= form :λ))
       (if (fennel.sequence? (?. ast 2))
-        (when (or (<= (length ast) 3) (not (has-docstring? ast 3)))
+        (when (and config.anonymous-docstring
+                   (or (<= (length ast) 3) (not (has-docstring? ast 3))))
           (check-warning context position (.. "anonymous " (. form 1) " has no docstring")))
         (when (or (<= (length ast) 4) (not (has-docstring? ast 4)))
           (check-warning context position (.. (. form 1) " " (tostring (?. ast 2 1)) " has no docstring")))))))
