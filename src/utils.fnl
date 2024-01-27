@@ -8,11 +8,17 @@
     {:red "" :yellow "" :blue "" :default ""}))
 
 ;;; miscellaneous functions
+(fn unpack* [tbl]
+  "A wrapper around `table.unpack`/`unpack` for compatibility with luajit."
+  (if table.unpack
+    (values (table.unpack tbl))
+    (values (_G.unpack tbl)))) ; no-check
+
 (fn ??. [t k ...]
   "Type-safe table lookup, returns nil if `t` is not a table"
   (if (not= 0 (length [...]))
     (when (= :table (type t))
-      (??. (. t k) (table.unpack [...])))
+      (??. (. t k) (unpack* [...])))
     (when (= :table (type t))
       (. t k))))
 
