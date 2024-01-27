@@ -2,7 +2,16 @@
 "Macros to define checks."
 
 (λ defcheck [check-table check-type apply? name enabled? param docstring & body]
-  "Generic macro to define a check"
+  "Generic macro to define a check.
+   `check-table`: place the generated check in this table
+   `check-type`: `:ast` or `:line`
+   `apply?`: this is a predicate that receives an ast node andreturns whether
+             the check is appplicable to the node.
+   `name`: name of the check
+   `enabled?`: whether the check is enabled by default
+   `param`: function parameter table
+   `docstring`: function/check docstring
+   `body`: function body"
   (let [config ((. (require :config) :get))
         default? enabled?
         enabled? (if (not= nil (?. config :checks name))

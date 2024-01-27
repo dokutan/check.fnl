@@ -53,7 +53,9 @@
   "Recursively performs checks on the AST"
   (each [_ name (ipairs check-names)]
     (let [check (. checks name)]
-      (when (and (= :ast check.type) (check.apply? ast))
+      (when (and check.enabled?
+                 (= :ast check.type)
+                 (check.apply? ast))
         (check.fn context ast root?))))
   (when (= :table (type ast))
     (each [_ v (pairs ast)]
@@ -64,7 +66,8 @@
   "Perfoms checks on each line in `file`"
   (each [number line (ipairs context.current-lines)]
     (each [_ check (pairs checks)]
-      (when (= :line check.type)
+      (when (and check.enabled?
+                 (= :line check.type))
         (check.fn context line number)))))
 
 (fn parse-directives [context ast]
@@ -144,6 +147,15 @@
     (load-checks checks :table-checks)
     (load-checks checks :comment-checks)
     (load-checks checks :string-checks)
+
+    ;; enable/disable checks from the config
+    (let [config ((. (require :config) :get))]
+      (when (= :table (type config.checks))
+        (each [check (pairs config.checks)]
+          (when (= :table (type (. checks check)))
+            (if (. config.checks check)
+              (tset checks check :enabled? true)
+              (tset checks check :enabled? false))))))
 
     ;; generate a sorted list of check names to enable stable iteration
     (local check-names [])
