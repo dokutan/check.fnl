@@ -1,13 +1,26 @@
 (import-macros {: defcheck : list=} :macros)
 (local fennel (require :fennel))
-(local {: ??. : position->string : check-warning : check-error : sym=} (require :utils))
+(local
+  {: ??.
+   : position->string
+   : check-warning
+   : check-error
+   : sym=}
+  (require :utils))
 
 (local config ((. (require :config) :get)))
 
 (local list-checks [])
 (macro list-check [code enabled? param docstring body]
   "Define a check for lists"
-  `(defcheck list-checks :ast fennel.list? ,code ,enabled? ,param ,docstring ,body))
+  `(defcheck list-checks
+             :ast
+             fennel.list?
+             ,code
+             ,enabled?
+             ,param
+             ,docstring
+             ,body))
 
 (list-check :deprecated true [context ast]
   "Checks for deprecated forms"
@@ -18,7 +31,9 @@
         form (??. ast 1 1)
         since (. deprecated form)]
     (when (and (fennel.sym? (. ast 1)) (not= nil since))
-      (check-warning context position (.. form " is deprecated since " since)))))
+      (check-warning context
+                     position
+                     (.. form " is deprecated since " since)))))
 
 (list-check :deprecated-clause true [context ast]
   "Checks for the use of :until/:into or instead of &until/&into"
@@ -36,14 +51,20 @@
         (when (fennel.table? bindings)
           (let [clauses
                 (icollect [_ v (pairs bindings)]
-                  (if (or (= :until v) (= :into v))
+                  (if (or (= :until v) (= :into v)) ; no-check
                     v nil))]
             (each [_ v (ipairs clauses)]
               (if
                 (= v :until)
-                (check-warning context position (.. ":until is deprecated in " form ", use &until"))
+                (check-warning context
+                               position
+                               (.. ":until is deprecated in " form
+                                   ", use &until"))
                 (= v :into)
-                (check-warning context position (.. ":into is deprecated in " form ", use &into"))))))))))
+                (check-warning context
+                               position
+                               (.. ":into is deprecated in " form
+                                   ", use &into"))))))))))
 
 
 (list-check :if->when true [context ast]
@@ -53,7 +74,10 @@
     (when (and (sym= form :if) (< (length ast) 5))
       (let [else (??. ast 4)]
         (when (or (sym= else :nil) (= nil else))
-          (check-warning context position "if the body causes side-effects, replace this if with when"))))))
+          (check-warning
+            context
+            position
+            "if the body causes side-effects, replace this if with when"))))))
 
 (list-check :docstring true [context ast]
   "Checks if functions and macros have docstrings"
@@ -65,13 +89,21 @@
               (and (= :table (type (?. ast pos)))
                    (= :string (type (??. (?. ast pos) :fnl/docstring))))))]
 
-    (when (or (sym= form :fn) (sym= form :macro) (sym= form :lambda) (sym= form :λ))
+    (when (or (sym= form :fn)
+              (sym= form :macro)
+              (sym= form :lambda)
+              (sym= form :λ))
       (if (fennel.sequence? (?. ast 2))
         (when (and config.anonymous-docstring
                    (or (<= (length ast) 3) (not (has-docstring? ast 3))))
-          (check-warning context position (.. "anonymous " (. form 1) " has no docstring")))
+          (check-warning context
+                         position
+                         (.. "anonymous " (. form 1) " has no docstring")))
         (when (or (<= (length ast) 4) (not (has-docstring? ast 4)))
-          (check-warning context position (.. (. form 1) " " (tostring (?. ast 2 1)) " has no docstring")))))))
+          (check-warning context
+                         position
+                         (.. (. form 1) " " (tostring (?. ast 2 1))
+                             " has no docstring")))))))
 
 (list-check :useless-do true [context ast]
   "Checks for useless do forms"
@@ -90,7 +122,9 @@
             (when (and
                     (sym= form2 :do)
                     (<= (. forms form) index))
-              (check-warning context position (.. "do is useless inside of " form)))))))))
+              (check-warning context
+                             position
+                             (.. "do is useless inside of " form)))))))))
 
 (list-check :syntax-let true [context ast]
   "Checks for invalid let bindings"
@@ -101,7 +135,9 @@
         (when (and (fennel.table? bindings) (= 0 (length bindings)))
           (check-warning context position "let has no bindings"))
         (when (and (fennel.table? bindings) (not= 0 (% (length bindings) 2)))
-          (check-error context position "let requires an even number of bindings"))))))
+          (check-error context
+                       position
+                       "let requires an even number of bindings"))))))
 
 (list-check :syntax-no-bindings true [context ast]
   "Checks for missing binding tables"
@@ -118,7 +154,10 @@
     (when (. forms form)
       (let [bindings (??. ast 2)]
         (when (not (fennel.sequence? bindings))
-          (check-error context position (.. form " requires a binding table as the first argument")))))))
+          (check-error
+            context
+            position
+            (.. form " requires a binding table as the first argument")))))))
 
 (list-check :syntax-body true [context ast]
   "Checks for missing or wrong body expressions"
@@ -133,11 +172,17 @@
         position (position->string ast)
         form (??. ast 1 1)]
     (when (and (. forms form) (< (length ast) 3))
-      (check-error context position (.. form " requires a body")))
-    (when (and (= 1 (. forms form)) (> (length ast) 3))
-      (check-error context position (.. form " requires exactly one body expression")))
-    (when (and (= 2 (. forms form)) (> (length ast) 4))
-      (check-error context position (.. form " requires exactly one or two body expressions")))))
+      (check-error context
+                   position
+                   (.. form " requires a body")))
+    (when (and (= 1 (. forms form)) (< 3 (length ast)))
+      (check-error context
+                   position
+                   (.. form " requires exactly one body expression")))
+    (when (and (= 2 (. forms form)) (< 4 (length ast)))
+      (check-error context
+                   position
+                   (.. form " requires exactly one or two body expressions")))))
 
 (list-check :syntax-if true [context ast]
   "Checks for invalid uses of if"
@@ -156,7 +201,10 @@
             (sym= form :for)
             (fennel.sequence? bindings)
             (< (length bindings) 3))
-      (check-error context position "for requires a binding table with a symbol, start and stop points"))))
+      (check-error
+        context
+        position
+        "for requires a binding table with a symbol, start and stop points"))))
 
 (list-check :for->each true [context ast]
   "Checks for uses of for that should be replaced with each"
@@ -171,7 +219,9 @@
                 (fennel.list? i)
                 (or (sym= (. i 1) :pairs)
                     (sym= (. i 1) :ipairs)))
-          (check-warning context position "use each instead of for for general iteration"))))))
+          (check-warning context
+                         position
+                         "use each instead of for for general iteration"))))))
 
 (list-check :useless-not true [context ast]
   "Checks for uses of not that can be replaced"
@@ -181,28 +231,46 @@
       (let [form (??. ast 2 1)]
         (if
           (sym= form :not)
-          (check-warning context position "(not (not ...)) is useless")
+          (check-warning context
+                         position
+                         "(not (not ...)) is useless")
           (sym= form :not=)
-          (check-warning context position "replace (not (not= ...)) with (= ...)")
+          (check-warning context
+                         position
+                         "replace (not (not= ...)) with (= ...)")
           (sym= form "~=")
-          (check-warning context position "replace (not (~= ...)) with (= ...)")
+          (check-warning context
+                         position
+                         "replace (not (~= ...)) with (= ...)")
           (sym= form :=)
-          (check-warning context position "replace (not (= ...)) with (not= ...)")
+          (check-warning context
+                         position
+                         "replace (not (= ...)) with (not= ...)")
           (sym= form :<)
-          (check-warning context position "replace (not (< ...)) with (>= ...)")
+          (check-warning context
+                         position
+                         "replace (not (< ...)) with (>= ...)")
           (sym= form :<=)
-          (check-warning context position "replace (not (<= ...)) with (> ...)")
+          (check-warning context
+                         position
+                         "replace (not (<= ...)) with (> ...)")
           (sym= form :>)
-          (check-warning context position "replace (not (> ...)) with (<= ...)")
+          (check-warning context
+                         position
+                         "replace (not (> ...)) with (<= ...)")
           (sym= form :>=)
-          (check-warning context position "replace (not (>= ...)) with (< ...)"))))))
+          (check-warning context
+                         position
+                         "replace (not (>= ...)) with (< ...)"))))))
 
 (list-check :identifier false [context ast]
   "Checks for lists that don't begin with an identifier"
   (let [position (position->string ast)
         form (??. ast 1)]
     (when (and (fennel.list? ast) (not (fennel.sym? form)))
-      (check-warning context position "this list doesn't begin with an identifier"))))
+      (check-warning context
+                     position
+                     "this list doesn't begin with an identifier"))))
 
 (list-check :local->let true [context ast root?]
   "Checks for locals that can be replaced with let"
@@ -220,7 +288,9 @@
             (fennel.sym? (. ast 1))
             (not= nil (. forms form))
             (< (length ast) 3))
-      (check-error context position (.. form " requires at least two arguments")))))
+      (check-error context
+                   position
+                   (.. form " requires at least two arguments")))))
 
 (list-check :useless-forms true [context ast]
   "Checks for forms that are useless with one argument"
@@ -233,7 +303,9 @@
             (fennel.sym? (. ast 1))
             (not= nil (. forms form))
             (< (length ast) 3))
-      (check-warning context position (.. form " is useless with a single argument")))))
+      (check-warning context
+                     position
+                     (.. form " is useless with a single argument")))))
 
 (list-check :style-alternatives true [context ast]
   "Checks for forms that have multiple names"
@@ -266,12 +338,16 @@
       (let [form (. ast 1)
             position (position->string ast)]
         (if
-          (or (sym= form :global) (sym= form :local)
-              (sym= form :var) (sym= form :macro))
+          (or (sym= form :global)
+              (sym= form :local)
+              (sym= form :var)
+              (sym= form :macro))
             (check-symbol (. ast 2 1) position (. form 1))
-          (or (sym= form :fn) (sym= form :λ) (sym= form :lambda))
-            (if (fennel.sym? (. ast 2))
-              (check-symbol (. ast 2 1) position (. form 1)))
+          (and (or (sym= form :fn)
+                   (sym= form :λ)
+                   (sym= form :lambda))
+               (fennel.sym? (. ast 2)))
+            (check-symbol (. ast 2 1) position (. form 1))
           (sym= form :macros)
             (each [k (pairs (. ast 2))]
               (check-symbol k position (. form 1)))))))
@@ -281,7 +357,7 @@
   (do
     (fn check-symbol [symbol position form root?]
       "Checks if `symbol` has been previously defined"
-      (if
+      (when
         (and symbol (. context :current-symbols symbol) (not root?))
           (check-warning context
             position
@@ -292,12 +368,16 @@
       (let [form (. ast 1)
             position (position->string ast)]
         (if
-          (or (sym= form :global) (sym= form :local)
-              (sym= form :var) (sym= form :macro))
+          (or (sym= form :global)
+              (sym= form :local)
+              (sym= form :var)
+              (sym= form :macro))
             (check-symbol (. ast 2 1) position (. form 1) root?)
-          (or (sym= form :fn) (sym= form :λ) (sym= form :lambda))
-            (if (fennel.sym? (. ast 2))
-              (check-symbol (. ast 2 1) position (. form 1) root?))
+          (and (or (sym= form :fn)
+                   (sym= form :λ)
+                   (sym= form :lambda))
+               (fennel.sym? (. ast 2)))
+            (check-symbol (. ast 2 1) position (. form 1) root?)
           (and (= :table (type (. ast 2))) (sym= form :macros))
             (each [k (pairs (. ast 2))]
               (check-symbol k position (. form 1) root?))
@@ -324,7 +404,7 @@
       (or (list= ast (= 0 ...)) (list= ast (= ... 0)))
       (check-warning context position "use cljlib.zero? instead of (= 0 ...)")
 
-      (list= ast (> ... 0))
+      (list= ast (> ... 0)) ; no-check
       (check-warning context position "use cljlib.pos? instead of (> ... 0)")
 
       (list= ast (< 0 ...))
@@ -333,28 +413,44 @@
       (list= ast (< ... 0))
       (check-warning context position "use cljlib.neg? instead of (< ... 0)")
 
-      (list= ast (> 0 ...))
+      (list= ast (> 0 ...)) ; no-check
       (check-warning context position "use cljlib.neg? instead of (> 0 ...)")
 
       (or (list= ast (= (% ... 2) 0)) (list= ast (= 0 (% ... 2))))
-      (check-warning context position "use cljlib.even? instead of (= 0 (% ... 2))")
+      (check-warning context
+                     position
+                     "use cljlib.even? instead of (= 0 (% ... 2))")
 
       (or (list= ast (not= (% ... 2) 0)) (list= ast (not= 0 (% ... 2))))
-      (check-warning context position "use cljlib.odd? instead of (not= 0 (% ... 2))")
+      (check-warning context
+                     position
+                     "use cljlib.odd? instead of (not= 0 (% ... 2))")
 
       (or (list= ast (= (% ... 2) 1)) (list= ast (= 1 (% ... 2))))
-      (check-warning context position "use cljlib.odd? instead of (= 1 (% ... 2))")
+      (check-warning context
+                     position
+                     "use cljlib.odd? instead of (= 1 (% ... 2))")
 
-      (or (list= ast (= (type ...) :string)) (list= ast (= :string (type ...))))
-      (check-warning context position "use cljlib.string? instead of (= :string (type ...))")
+      (or (list= ast (= (type ...) :string))
+          (list= ast (= :string (type ...))))
+      (check-warning context
+                     position
+                     "use cljlib.string? instead of (= :string (type ...))")
 
-      (or (list= ast (= (type ...) :boolean)) (list= ast (= :boolean (type ...))))
-      (check-warning context position "use cljlib.boolean? instead of (= :boolean (type ...))")
+      (or (list= ast (= (type ...) :boolean))
+          (list= ast (= :boolean (type ...))))
+      (check-warning context
+                     position
+                     "use cljlib.boolean? instead of (= :boolean (type ...))")
 
       (or (list= ast (= true ...)) (list= ast (= ... true)))
-      (check-warning context position "use cljlib.true? instead of (= true ...)")
+      (check-warning context
+                     position
+                     "use cljlib.true? instead of (= true ...)")
 
       (or (list= ast (= false ...)) (list= ast (= ... false)))
-      (check-warning context position "use cljlib.false? instead of (= false ...)"))))
+      (check-warning context
+                     position
+                     "use cljlib.false? instead of (= false ...)"))))
 
 list-checks

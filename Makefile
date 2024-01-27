@@ -14,5 +14,8 @@ binary:
 test: check.fnl
 	cd tests; fennel test.fnl
 
+lint: check.fnl
+	./check.fnl src/*
+
 clean:
 	rm check.fnl
