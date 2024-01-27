@@ -25,11 +25,11 @@
        :enabled? ,enabled?
        :type ,check-type
        :apply? ,apply?
-       :fn (fn ,param ,docstring ,(unpack body))})))
+       :fn (fn ,param ,docstring ,(unpack body))}))) ; no-check
 
-(fn list= [ast schema]
+(λ list= [ast schema]
   "Checks if `ast` matches `schema`."
-  (let [result `(and (= (length ,ast) ,(length schema)))]
+  (let [result `(and (= (length ,ast) ,(length schema)))] ; no-check
     (for [i 1 (length schema)]
       (if
         (sym? (. schema i))
@@ -43,8 +43,8 @@
         (table.insert result
           `(if
             (fennel.list? (. ,ast ,i))
-            (list= (. ,ast ,i) ,(. schema i)
-            false)))
+            (list= (. ,ast ,i) ,(. schema i))
+            false))
 
         (varg? (. schema i))
         (table.insert result true)
@@ -56,7 +56,7 @@
           (= (?. ,ast ,i 1) :nil)
           false))
 
-        ;else
+        ;; else
         (table.insert result `(= (. ,ast ,i) ,(. schema i)))))
     result))
 

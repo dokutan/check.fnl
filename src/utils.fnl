@@ -42,13 +42,21 @@
   "Print a warning"
   (when (not (?. context :skip-current-lines (tostring linenumber)))
     (when (= (. context :return-value) 0) (tset context :return-value 1))
-    (print (.. color.yellow linenumber ": " message color.default "\n" (?. context :current-lines (tonumber linenumber))))))
+    (print (.. color.yellow
+               linenumber ": "
+               message
+               color.default "\n"
+               (?. context :current-lines (tonumber linenumber))))))
 
 (fn check-error [context linenumber message]
   "Print an error"
   (when (not (?. context :skip-current-lines (tostring linenumber)))
     (tset context :return-value 2)
-    (print (.. color.red linenumber ": " message color.default "\n" (?. context :current-lines (tonumber linenumber))))))
+    (print (.. color.red
+               linenumber ": "
+               message
+               color.default "\n"
+               (?. context :current-lines (tonumber linenumber))))))
 
 {: color
  : ??.

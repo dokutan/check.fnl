@@ -13,7 +13,7 @@
    - show-checks?"
   (var config-path nil)
   (var show-checks? false)
-  (local files [])
+  (local files []) ; no-check
 
   (while (. arg 1)
     (if
@@ -45,7 +45,8 @@
   (each [_ name (ipairs check-names)]
     (let [metadata (. checks name)
           pad1 (string.rep " " (- 20 (length name)))
-          enabled? (.. (if metadata.enabled? "true" "false") "(" (if metadata.default? "true" "false") ")")
+          enabled? (.. (if metadata.enabled? "true" "false")
+                       "(" (if metadata.default? "true" "false") ")")
           pad2 (string.rep " " (- 13 (length enabled?)))]
       (print (.. name pad1 enabled? pad2 (or metadata.docstring ""))))))
 
@@ -72,76 +73,75 @@
 
 (fn parse-directives [context ast]
   "Check if `ast` contains comments to disable checks"
-  (local {: position->string} (require :utils))
-  (if (fennel.comment? ast)
-    (let [linenumber (position->string ast)]
-      (when (and (not= :? linenumber)
-                 (string.match (tostring ast) "no%-check"))
-        (tset context.skip-current-lines (->> linenumber tonumber tostring) true)))
-    (when (= :table (type ast))
-      (each [_ v (pairs ast)]
-        (when (= :table (type v)) ; nested ast or table?
-          (parse-directives context v))))))
+  (let [{: position->string} (require :utils)]
+    (if (fennel.comment? ast)
+      (let [linenumber (position->string ast)]
+        (when (and (not= :? linenumber)
+                  (string.match (tostring ast) "no%-check"))
+          (tset context.skip-current-lines
+                (->> linenumber tonumber tostring) true)))
+      (when (= :table (type ast))
+        (each [_ v (pairs ast)]
+          (when (= :table (type v)) ; nested ast or table?
+            (parse-directives context v)))))))
 
 (fn check-file [path check-names checks]
   "Read file at `path`, and perform checks."
-  (local {: color} (require :utils))
-  (local context {:current-lines []
-                  :current-file ""
-                  :skip-current-lines {}
-                  :current-symbols {}
-                  :return-value 0})
+  (let [{: color} (require :utils)
+        context {:current-lines []
+                 :current-file ""
+                 :skip-current-lines {}
+                 :current-symbols {}
+                 :return-value 0}]
 
-  (print (.. color.blue path color.default))
-  (with-open [f (io.open path)]
+    (print (.. color.blue path color.default))
+    (with-open [f (io.open path)]
 
-    ;; read all lines from file as a table
-    (each [line (f:lines)]
-      (table.insert context.current-lines line))
+      ;; read all lines from file as a table
+      (each [line (f:lines)]
+        (table.insert context.current-lines line))
 
-    ;; read whole file as a string
-    (f:seek :set 0)
-    (tset context :current-file (f:read "*a")))
+      ;; read whole file as a string
+      (f:seek :set 0)
+      (tset context :current-file (f:read "*a")))
 
-  ;; parse directives
-  (let [parse (fennel.parser context.current-file nil {:comments true})]
-    (fn iterate []
-      (let [(pcall-ok parse-ok ast) (pcall parse)]
-        (when (and pcall-ok parse-ok)
-          (parse-directives context ast)
-          (iterate))))
-    (iterate))
+    ;; parse directives
+    (let [parse (fennel.parser context.current-file nil {:comments true})]
+      (fn iterate [] ; no-check
+        (let [(pcall-ok parse-ok ast) (pcall parse)]
+          (when (and pcall-ok parse-ok)
+            (parse-directives context ast)
+            (iterate))))
+      (iterate))
 
-  ;; perform string based checks
-  (perform-string-checks context checks)
+    ;; perform string based checks
+    (perform-string-checks context checks)
 
-  ;; perform AST-based checks
-  (let [parse (fennel.parser context.current-file nil {:comments true})]
-    (fn iterate []
-      (let [(pcall-ok parse-ok ast) (pcall parse)]
-        (when (and pcall-ok parse-ok)
-          (perform-ast-checks check-names checks context ast true)
-          (iterate))))
-    (iterate))
+    ;; perform AST-based checks
+    (let [parse (fennel.parser context.current-file nil {:comments true})]
+      (fn iterate [] ; no-check
+        (let [(pcall-ok parse-ok ast) (pcall parse)]
+          (when (and pcall-ok parse-ok)
+            (perform-ast-checks check-names checks context ast true)
+            (iterate))))
+      (iterate))
 
-  context.return-value)
+    context.return-value))
 
 (fn main []
   "Main function."
-  (let [(files config-path show-checks?) (parse-arg)]
+  (let [(files config-path show-checks?) (parse-arg)
+        checks {}
+        check-names []]
 
     ;; load config, this needs to be done before other modules are required
     (when config-path
       ((. (require :config) :load) config-path))
 
-    ;; require
-    (local {: position->string : color : check-error} (require :utils))
-
     ;; local variables
     (var return-value 0)
 
     ;; require checks
-    (local checks {})
     (load-checks checks :list-checks)
     (load-checks checks :sym-checks)
     (load-checks checks :table-checks)
@@ -158,7 +158,6 @@
               (tset checks check :enabled? false))))))
 
     ;; generate a sorted list of check names to enable stable iteration
-    (local check-names [])
     (each [name (pairs checks)]
       (table.insert check-names name))
     (table.sort check-names)
@@ -170,7 +169,8 @@
 
     ;; perform checks for each file
     (each [_ file (ipairs files)]
-      (set return-value (math.max return-value (check-file file check-names checks)))
+      (set return-value
+           (math.max return-value (check-file file check-names checks)))
       (print))
 
     (os.exit return-value)))

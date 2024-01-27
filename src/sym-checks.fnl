@@ -5,7 +5,14 @@
 (local sym-checks [])
 (macro sym-check [code enabled? param docstring body]
   "Define a check for lists"
-  `(defcheck sym-checks :ast fennel.sym? ,code ,enabled? ,param ,docstring ,body))
+  `(defcheck sym-checks
+             :ast
+             fennel.sym?
+             ,code
+             ,enabled?
+             ,param
+             ,docstring
+             ,body))
 
 (sym-check :symbols true [context ast]
   "Checks names for bad symbols"
