@@ -3,19 +3,23 @@ A linter for [Fennel](https://fennel-lang.org)
 
 [![tests](https://github.com/dokutan/check.fnl/actions/workflows/test.yml/badge.svg)](https://github.com/dokutan/check.fnl/actions)
 ## Dependencies
-- Fennel interpreter
-- Fennel Lua module (fennel.lua)
 - Lua interpreter:
   - Compiling check.fnl is only tested with Fennel on PUC Lua 5.4.
   - Running the built Lua file is possible with either luajit or PUC Lua, but:
   - Luajit (and Lua without the utf8 module) counts line lengths by bytes instead of unicode codepoints.
 
+### Build dependencies
+You don't need this if you download a compiled version from the [release page](https://github.com/dokutan/check.fnl/releases).
+
+- Fennel interpreter
+- Fennel Lua module (fennel.lua)
+
 It is recommended that you install Fennel using your package manager, this should take care of all dependencies. If you don't have Fennel properly installed, you might need to download the Fennel Lua module and place it in the same directory as check.fnl.
 
 ## Usage
-Clone this repository and run
+To build check.fnl, clone this repository and run `make`, or download it from the [release page](https://github.com/dokutan/check.fnl/releases).
+
 ```
-make
 ./check.fnl file1.fnl file2.fnl …
 ```
 
