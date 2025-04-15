@@ -61,6 +61,16 @@
           pad2 (string.rep " " (- 17 (length enabled?)))]
       (print (.. name pad1 enabled? pad2 (or metadata.docstring ""))))))
 
+(fn threading-macro? [ast]
+  "Is `ast` a threading macro?"
+  (let [{: sym=} (require :utils)]
+    (or
+      (sym= (. ast 1) :doto)
+      (sym= (. ast 1) :->)
+      (sym= (. ast 1) :->>)
+      (sym= (. ast 1) :-?>)
+      (sym= (. ast 1) :-?>>))))
+
 (fn perform-ast-checks [check-names checks context ast root?]
   "Recursively performs checks on the AST"
   (each [_ name (ipairs check-names)]
@@ -70,9 +80,12 @@
                  (check.apply? ast))
         (check.fn context ast root?))))
   (when (= :table (type ast))
-    (each [_ v (pairs ast)]
-      (when (= :table (type v)) ; nested ast or table?
-        (perform-ast-checks check-names checks context v false)))))
+    (let [parent-is-threading-macro context.in-threading-macro]
+      (set context.in-threading-macro (threading-macro? ast))
+      (each [_ v (pairs ast)]
+        (when (= :table (type v)) ; nested ast or table?
+          (perform-ast-checks check-names checks context v false)))
+      (set context.in-threading-macro parent-is-threading-macro))))
 
 (fn perform-string-checks [context checks]
   "Perfoms checks on each line in `file`"
@@ -103,7 +116,8 @@
                  :current-file ""
                  :skip-current-lines {}
                  :current-symbols {}
-                 :return-value 0}]
+                 :return-value 0
+                 :in-threading-macro false}]
 
     (print (.. color.blue path color.default))
     (with-open [f (io.open path)]

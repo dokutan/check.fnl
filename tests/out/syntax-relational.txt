@@ -15,4 +15,6 @@
 (>= 5)
 6: not= requires at least two arguments
 (not= 6)
+9: = requires at least two arguments
+(-> 1 (=))
 

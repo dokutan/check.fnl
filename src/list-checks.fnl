@@ -189,7 +189,7 @@
   (let [position (position->string ast)
         form (. ast 1)]
     (when (sym= form :if)
-      (when (< (length ast) 3)
+      (when (< (length ast) (if context.in-threading-macro 2 3))
         (check-error context position "if requires a condition and a body")))))
 
 (list-check :syntax-for true [context ast]
@@ -287,7 +287,7 @@
     (when (and
             (fennel.sym? (. ast 1))
             (not= nil (. forms form))
-            (< (length ast) 3))
+            (< (length ast) (if context.in-threading-macro 2 3)))
       (check-error context
                    position
                    (.. form " requires at least two arguments")))))
@@ -302,7 +302,7 @@
     (when (and
             (fennel.sym? (. ast 1))
             (not= nil (. forms form))
-            (< (length ast) 3))
+            (< (length ast) (if context.in-threading-macro 2 3)))
       (check-warning context
                      position
                      (.. form " is useless with a single argument")))))
