@@ -1,5 +1,6 @@
 #!/usr/bin/env fennel
 (local fennel (require :fennel))
+(local version :1.0.0)
 
 (macro load-checks [checks module]
   "Load the checks from `module` into `checks`."
@@ -19,7 +20,16 @@
     (if
       (= "-h" (. arg 1))
       (do
-        (print "usage: check.fnl [-s] [-c config] file ...")
+        (print
+          (.. "check.fnl " version " (using Fennel " fennel.version " and " _VERSION ")\n"
+              "\n"
+              "usage:\n"
+              " check.fnl [-s] [-c config] file ...\n"
+              "\n"
+              "options:\n"
+              " -h show this message\n"
+              " -s show all availabe checks\n"
+              " -c specify config file"))
         (os.exit 0))
 
       (= "-s" (. arg 1))
@@ -42,12 +52,13 @@
 
 (fn show-checks [check-names checks]
   "Print a list of all checks."
+  (print "name                enabled(default) description\n")
   (each [_ name (ipairs check-names)]
     (let [metadata (. checks name)
           pad1 (string.rep " " (- 20 (length name)))
           enabled? (.. (if metadata.enabled? "true" "false")
                        "(" (if metadata.default? "true" "false") ")")
-          pad2 (string.rep " " (- 13 (length enabled?)))]
+          pad2 (string.rep " " (- 17 (length enabled?)))]
       (print (.. name pad1 enabled? pad2 (or metadata.docstring ""))))))
 
 (fn perform-ast-checks [check-names checks context ast root?]
